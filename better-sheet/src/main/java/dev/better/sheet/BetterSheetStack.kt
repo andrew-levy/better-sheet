@@ -56,7 +56,8 @@ public class SheetStackEntry internal constructor(
 
 private fun SheetState.stackPresentationProgress(): Float {
     val g = geometry ?: return 0f
-    return stackCoverage(g.availableHeight - offsetOrHidden(), g.availableHeight - g.offsets.getValue(g.smallest))
+    return stackCoverage(g.availableHeight - offsetOrHidden(), g.availableHeight - g.offsets.getValue(g.smallest)) *
+        if (transitionsManaged) presentationFraction else 1f
 }
 
 internal fun stackCoverage(visibleHeight: Float, restingHeight: Float): Float =
@@ -103,3 +104,4 @@ public fun Modifier.sheetStackEffect(
         }
     }
 }
+

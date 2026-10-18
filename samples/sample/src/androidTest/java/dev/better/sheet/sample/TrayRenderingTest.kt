@@ -76,7 +76,7 @@ class TrayRenderingTest {
                 awaitSettled("medium")
                 repeat(3) {
                     for (target in listOf("expanded", "medium")) {
-                        instrumentation.runOnMainSync { scope.launch { state.animateTo(target) } }
+                        instrumentation.runOnMainSync { scope.launch { state.snapTo(target) } }
                         awaitSettled(target)
                         repeat(3) {
                             val shot = screenshot()
@@ -118,3 +118,4 @@ class TrayRenderingTest {
         }
     }
 }
+

@@ -1,5 +1,7 @@
 package dev.better.sheet
 
+import androidx.compose.animation.core.SpringSpec
+import androidx.compose.animation.core.spring
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.sign
@@ -14,6 +16,11 @@ internal const val IosSheetSpringDampingRatio = 1f
 /** stiffness = (2π / duration)^2, mass = 1. */
 internal val IosSheetSpringStiffness: Float =
     (2.0 * PI / IosSheetSpringDurationSeconds).let { (it * it).toFloat() }
+
+internal fun <T> defaultSheetSpring(): SpringSpec<T> = spring(
+    dampingRatio = IosSheetSpringDampingRatio,
+    stiffness = IosSheetSpringStiffness,
+)
 
 /** UIScrollView rubber-band coefficient used by iOS sheets. */
 internal const val RubberBandCoefficient = 0.55f
@@ -77,13 +84,8 @@ internal fun releasesBackgroundPointer(
  * The modal can leave composition once it is visually gone. Waiting for the spring's
  * numerical tail keeps the last presentation "open", so the next tap is a no-op.
  */
-internal fun SheetState.releaseDismissed(slop: Float): Boolean {
-    if (!hasPresented) return false
-    val available = geometry?.availableHeight
-    val visible = if (available == null) Float.MAX_VALUE else (available - offsetOrHidden()).coerceAtLeast(0f)
-    if (releasesBackgroundPointer(targetSnapPoint == null, dragInProgress, visible, slop)) return true
-    return currentSnapPoint == null && !isVisible && !isAnimationRunning
-}
+internal fun SheetState.releaseDismissed(): Boolean = hasPresented && !modalAwaitingPresentation &&
+    targetSnapPoint == null && !isVisible && !isAnimationRunning && !dragInProgress
 
 /** 0 at hidden, 1 at the lowest detent, held at 1 above that. Ignored when [followsDrag] is false. */
 internal fun scrimDragFraction(visibleHeight: Float, smallestDetentHeight: Float, followsDrag: Boolean): Float {
@@ -91,3 +93,4 @@ internal fun scrimDragFraction(visibleHeight: Float, smallestDetentHeight: Float
     if (smallestDetentHeight <= 0f) return 1f
     return (visibleHeight / smallestDetentHeight).coerceIn(0f, 1f)
 }
+

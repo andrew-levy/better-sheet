@@ -58,7 +58,7 @@ class SheetStateTest {
     }
     @Test fun snapUpdatesSettledValue() = runTest {
         val state = state()
-        state.snapTo("full")
+        state.jumpTo("full")
         assertEquals("full", state.currentSnapPoint)
         assertEquals(1f, state.progress, 0f)
     }
@@ -71,12 +71,13 @@ class SheetStateTest {
     @Test fun aliasesAreAcceptedByProgrammaticApi() = runTest {
         val state = state()
         state.updateGeometry(SheetGeometry.resolve(500f, 100f, listOf("medium" to 500f, "full" to 900f)), true)
-        state.snapTo("full")
+        state.jumpTo("full")
         assertEquals("medium", state.currentSnapPoint)
     }
     @Test fun unknownIdsFailWithUsefulError() = runTest {
         val state = state()
-        try { state.snapTo("missing"); fail("Expected unknown ID failure") }
+        try { state.jumpTo("missing"); fail("Expected unknown ID failure") }
         catch (e: IllegalArgumentException) { assertTrue(e.message!!.contains("missing")) }
     }
 }
+

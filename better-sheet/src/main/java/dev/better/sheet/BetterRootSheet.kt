@@ -1,5 +1,10 @@
 package dev.better.sheet
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
@@ -40,6 +45,9 @@ public fun BetterSheet(
     footer: @Composable (() -> Unit)? = null,
     surfaceModifier: Modifier = Modifier,
     presentation: SheetPresentation = SheetPresentation.Standard,
+    enterTransition: EnterTransition = slideInVertically(defaultSheetSpring()) { it },
+    exitTransition: ExitTransition = slideOutVertically(defaultSheetSpring()) { it },
+    snapAnimationSpec: AnimationSpec<Float> = defaultSheetSpring(),
     content: @Composable ColumnScope.() -> Unit,
 ) {
     SideEffect { state.preparePresentation() }
@@ -52,13 +60,12 @@ public fun BetterSheet(
             keyboard?.hide()
         }
     }
-    val dismissSlop = with(LocalDensity.current) { 24.dp.toPx() }
     LaunchedEffect(state) {
-        if (state.initiallyVisible) launch { state.enter() }
-        snapshotFlow { state.releaseDismissed(dismissSlop) }.collect { hidden -> if (hidden) dismissed() }
+        snapshotFlow { state.releaseDismissed() }.collect { hidden -> if (hidden) dismissed() }
     }
     BetterSheetHost(
         state, snapPoints, modifier, behavior, bodyMode, title, maxWidth, topMargin,
-        containerColor, contentColor, scrimColor, shape, dragHandle, header, footer, surfaceModifier, presentation, content,
+        containerColor, contentColor, scrimColor, shape, dragHandle, header, footer, surfaceModifier, presentation, enterTransition, exitTransition, snapAnimationSpec, content,
     )
 }
+

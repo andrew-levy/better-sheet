@@ -1,5 +1,8 @@
 package dev.better.sheet
 
+import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.foundation.MutatorMutex
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.spring
@@ -23,9 +26,28 @@ import kotlinx.coroutines.flow.first
 @Stable
 public class SheetState internal constructor(
     internal val initialSnapPoint: String,
-    internal val animationSpec: AnimationSpec<Float>,
+    animationSpec: AnimationSpec<Float> = defaultSheetSpring(),
     internal val initiallyVisible: Boolean = true,
 ) {
+    internal var snapAnimationSpec: AnimationSpec<Float> by mutableStateOf(animationSpec)
+    internal var visibility = MutableTransitionState(EnterExitState.PreEnter)
+        private set
+    internal var presentationFraction by mutableFloatStateOf(0f)
+    internal var transitionsManaged = false
+    private val operations = MutatorMutex()
+    internal val presentationActive: Boolean get() = visibility.currentState == EnterExitState.Visible ||
+        visibility.targetState == EnterExitState.Visible || !visibility.isIdle
+    internal val presentationExiting: Boolean get() = transitionsManaged &&
+        visibility.targetState == EnterExitState.PostExit
+    internal fun configureAnimations(spec: AnimationSpec<Float>) {
+        transitionsManaged = true
+        snapAnimationSpec = spec
+    }
+    private suspend fun awaitPresentation(target: EnterExitState) {
+        snapshotFlow { visibility.targetState != target || visibility.isIdle }.first { it }
+        if (visibility.targetState != target) throw CancellationException("Sheet presentation interrupted")
+    }
+
     internal val anchored = AnchoredDraggableState(if (initiallyVisible) initialSnapPoint else HiddenId)
     internal var geometry: SheetGeometry? by mutableStateOf(null)
     private var dragDismiss = true
@@ -69,11 +91,11 @@ public class SheetState internal constructor(
 
     /** The snap point actually reached; does not change half way through an animation. */
     public val currentSnapPoint: String? get() = anchored.settledValue.takeUnless { it == HiddenId }
-    public val targetSnapPoint: String? get() = anchored.targetValue.takeUnless { it == HiddenId }
-    public val isAnimationRunning: Boolean get() = anchored.isAnimationRunning
-    public val isVisible: Boolean get() = geometry?.let { anchored.offset.isFinite() && anchored.offset < it.availableHeight - 0.5f } ?: false
+    public val targetSnapPoint: String? get() = if (presentationExiting) null else anchored.targetValue.takeUnless { it == HiddenId }
+    public val isAnimationRunning: Boolean get() = anchored.isAnimationRunning || (transitionsManaged && !visibility.isIdle)
+    public val isVisible: Boolean get() = (!transitionsManaged || presentationActive) && (geometry?.let { anchored.offset.isFinite() && anchored.offset < it.availableHeight - 0.5f } ?: false)
     /** Continuous normalized visible height, useful for coordinated background animation. */
-    public val progress: Float get() = geometry?.let { ((it.availableHeight - offsetOrHidden()) / it.availableHeight).coerceIn(0f, 1f) } ?: 0f
+    public val progress: Float get() = geometry?.let { ((it.availableHeight - offsetOrHidden()) / it.availableHeight).coerceIn(0f, 1f) * if (transitionsManaged) presentationFraction else 1f } ?: 0f
 
     internal fun offsetOrHidden(): Float = anchored.offset.takeIf { it.isFinite() } ?: (geometry?.availableHeight ?: 0f)
 
@@ -110,76 +132,87 @@ public class SheetState internal constructor(
         return result.first!!
     }
 
-    /** Suspends until layout is ready. Unknown IDs fail fast; interrupted animations propagate cancellation. */
-    public suspend fun animateTo(snapPoint: String) {
+    /** Animates to a named snap point, entering first if hidden. Suspends until complete. */
+    public suspend fun snapTo(snapPoint: String) = operations.mutate {
+        moveTo(snapPoint, immediate = false)
+    }
+
+    /** Moves immediately, skipping both snap and entrance animations. */
+    public suspend fun jumpTo(snapPoint: String) = operations.mutate {
+        moveTo(snapPoint, immediate = true)
+    }
+
+    private suspend fun moveTo(snapPoint: String, immediate: Boolean) {
         requestPresentation()
         val g = ready()
         val target = g.canonical(snapPoint)
         require(target in g.offsets) { "Unknown snap point '$snapPoint'. Available: ${g.offsets.keys + g.aliases.keys}" }
-        modalAwaitingPresentation = false
+        val entering = transitionsManaged && (!presentationActive ||
+            (anchored.settledValue == HiddenId && !anchored.isAnimationRunning))
+        if (entering && visibility.currentState == EnterExitState.Visible) {
+            visibility = MutableTransitionState(EnterExitState.PreEnter)
+            presentationFraction = 0f
+        }
         clearRubber()
         programmaticHide = false
-        hasPresented = true
         lastVisibleSnapPoint = target
         updateAnchors()
-        anchored.animateTo(target, animationSpec)
-        updateAnchors()
-    }
-
-    public suspend fun snapTo(snapPoint: String) {
-        requestPresentation()
-        val g = ready()
-        val target = g.canonical(snapPoint)
-        require(target in g.offsets) { "Unknown snap point '$snapPoint'" }
+        if (transitionsManaged && !entering && !immediate) visibility.targetState = EnterExitState.Visible
+        if (immediate || entering) anchored.snapTo(target)
+        else anchored.animateTo(target, snapAnimationSpec)
+        hasPresented = true
+        if (transitionsManaged) {
+            if (immediate) {
+                visibility = MutableTransitionState(EnterExitState.Visible)
+                presentationFraction = 1f
+            } else {
+                visibility.targetState = EnterExitState.Visible
+            }
+        }
         modalAwaitingPresentation = false
-        clearRubber()
-        programmaticHide = false
-        hasPresented = true
-        lastVisibleSnapPoint = target
         updateAnchors()
-        anchored.snapTo(target)
-        updateAnchors()
+        if (transitionsManaged && !immediate) awaitPresentation(EnterExitState.Visible)
     }
 
     /** Show a mounted sheet again, restoring its last requested snap point by default. */
-    public suspend fun show(snapPoint: String? = null) {
+    public suspend fun show(snapPoint: String? = null) = operations.mutate {
         requestPresentation()
         val g = ready()
-        animateTo(snapPoint ?: g.canonical(lastVisibleSnapPoint).takeIf { it in g.offsets } ?: g.smallest)
+        moveTo(snapPoint ?: g.canonical(lastVisibleSnapPoint).takeIf { it in g.offsets } ?: g.smallest, immediate = false)
     }
 
-    public suspend fun expand() { requestPresentation(); animateTo(ready().largest) }
-    public suspend fun collapse() { requestPresentation(); animateTo(ready().smallest) }
+    public suspend fun expand() = operations.mutate {
+        requestPresentation(); moveTo(ready().largest, immediate = false)
+    }
+    public suspend fun collapse() = operations.mutate {
+        requestPresentation(); moveTo(ready().smallest, immediate = false)
+    }
 
-    /** Programmatic dismissal remains available when drag, scrim or Back dismissal is disabled. */
-    public suspend fun hide() {
-        if (managedModal && !modalPresentationRequested) return
+    /** Programmatic dismissal uses the composable's exit transition and waits for it to finish. */
+    public suspend fun hide() = operations.mutate {
+        if (managedModal && !modalPresentationRequested) return@mutate
         if (managedModal && !measurementsReady) {
             initialPresentationPending = false
             finishModalPresentation()
-            return
+            return@mutate
         }
         ready()
-        if (currentSnapPoint == null && !isVisible && !isAnimationRunning) return
+        modalAwaitingPresentation = false
+        if (currentSnapPoint == null && !isVisible && !isAnimationRunning) return@mutate
         (targetSnapPoint ?: currentSnapPoint)?.let { lastVisibleSnapPoint = it }
         clearRubber()
         programmaticHide = true
         updateAnchors()
-        try { anchored.animateTo(HiddenId, animationSpec) }
-        finally { programmaticHide = false }
+        try {
+            if (transitionsManaged) {
+                visibility.targetState = EnterExitState.PostExit
+                awaitPresentation(EnterExitState.PostExit)
+                anchored.snapTo(HiddenId)
+            } else anchored.animateTo(HiddenId, snapAnimationSpec)
+        } finally { programmaticHide = false }
     }
 
-    internal suspend fun enter() {
-        val g = ready()
-        val desired = g.canonical(lastVisibleSnapPoint).takeIf { it in g.offsets } ?: g.smallest
-        // Managed hosts initialize hidden before the first drawable frame.
-        if (!managedPresentation) {
-            programmaticHide = true
-            updateAnchors()
-            anchored.snapTo(HiddenId)
-        }
-        show(desired)
-    }
+    internal suspend fun enter() = show()
 
     internal fun consumeDrag(delta: Float): Float {
         if (geometry == null || anchored.offset.isNaN()) return 0f
@@ -205,8 +238,14 @@ public class SheetState internal constructor(
     }
 
     /** Invalidates an in-flight edge spring so the finger keeps the current visual offset. */
+    internal fun catchExitingPresentation() {
+        if (presentationExiting) visibility.targetState = EnterExitState.Visible
+    }
+
     internal fun beginDrag() {
         rubberGeneration++
+        // A finger can catch an exiting sheet. The pending hide must not dismiss it afterward.
+        catchExitingPresentation()
         if (!dragInProgressState.value) dragInProgressState.value = true
     }
 
@@ -258,7 +297,7 @@ public class SheetState internal constructor(
         val dimension = geometry?.availableHeight ?: 0f
         val anim = Animatable(rubberTranslation)
         try {
-            anim.animateTo(0f, animationSpec, initialVelocity = velocity) {
+            anim.animateTo(0f, defaultSheetSpring(), initialVelocity = velocity) {
                 if (generation != rubberGeneration) throw CancellationException()
                 rubberTranslationState.floatValue = value
                 rubberRaw = if (dimension > 0f) rubberRawFromVisual(value, dimension) else 0f
@@ -307,7 +346,7 @@ public class SheetState internal constructor(
             val current = anchored.offset
             if (targetOffset.isNaN() || current.isNaN() || current == targetOffset) return@anchoredDrag
             val anim = Animatable(current)
-            anim.animateTo(targetOffset, animationSpec, initialVelocity = velocity) {
+            anim.animateTo(targetOffset, snapAnimationSpec, initialVelocity = velocity) {
                 drag.dragTo(value, this.velocity)
             }
         }
@@ -318,10 +357,6 @@ public class SheetState internal constructor(
 @Composable
 public fun rememberSheetState(
     initialSnapPoint: String = "expanded",
-    animationSpec: AnimationSpec<Float> = spring(
-        dampingRatio = IosSheetSpringDampingRatio,
-        stiffness = IosSheetSpringStiffness,
-    ),
     initiallyVisible: Boolean = true,
 ): SheetState {
     val saver = Saver<SheetState, List<String>>(
@@ -330,7 +365,8 @@ public fun rememberSheetState(
                 else it.currentSnapPoint ?: it.lastVisibleSnapPoint.takeIf { _ -> it.isVisible }
             listOf(visibleId ?: it.lastVisibleSnapPoint, (visibleId != null).toString())
         },
-        restore = { SheetState(it[0], animationSpec, it[1].toBoolean()) },
+        restore = { SheetState(it[0], initiallyVisible = it[1].toBoolean()) },
     )
-    return rememberSaveable(saver = saver) { SheetState(initialSnapPoint, animationSpec, initiallyVisible) }
+    return rememberSaveable(saver = saver) { SheetState(initialSnapPoint, initiallyVisible = initiallyVisible) }
 }
+

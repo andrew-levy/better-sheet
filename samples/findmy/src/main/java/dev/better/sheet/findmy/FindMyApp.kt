@@ -204,7 +204,7 @@ object DemoControls {
         LaunchedEffect(sheet, enabled) {
             if (!enabled) return@LaunchedEffect
             requests.collect { (target, detent) ->
-                if (target == sheet) state.animateTo(detent)
+                if (target == sheet) state.snapTo(detent)
             }
         }
     }
@@ -940,3 +940,4 @@ private suspend fun LazyListState.pinToEnd() {
     val delta = (item.offset + item.size - layoutInfo.viewportEndOffset).toFloat()
     if (delta > 1f) scroll { scrollBy(delta) }
 }
+

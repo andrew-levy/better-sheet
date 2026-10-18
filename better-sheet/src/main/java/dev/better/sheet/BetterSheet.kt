@@ -1,5 +1,10 @@
 package dev.better.sheet
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.AnimationSpec
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -76,6 +81,9 @@ public fun BetterModalSheet(
     surfaceModifier: Modifier = Modifier,
     stackState: SheetStackState? = null,
     presentation: SheetPresentation = SheetPresentation.Standard,
+    enterTransition: EnterTransition = slideInVertically(defaultSheetSpring()) { it },
+    exitTransition: ExitTransition = slideOutVertically(defaultSheetSpring()) { it },
+    snapAnimationSpec: AnimationSpec<Float> = defaultSheetSpring(),
     content: @Composable ColumnScope.() -> Unit,
 ) {
     SideEffect { state.prepareModalPresentation() }
@@ -114,12 +122,6 @@ public fun BetterModalSheet(
             // Preserving that choice is required for legacy IME inset delivery.
         }
         LaunchedEffect(state) {
-            if (state.initialPresentationPending) {
-                state.initialPresentationPending = false
-                try { state.enter() } catch (interrupted: CancellationException) { coroutineContext.ensureActive() }
-            }
-        }
-        LaunchedEffect(state) {
             snapshotFlow {
                 state.hasPresented && !state.modalAwaitingPresentation && state.targetSnapPoint == null && !state.isVisible &&
                     !state.isAnimationRunning && !state.dragInProgress
@@ -130,7 +132,7 @@ public fun BetterModalSheet(
         CompositionLocalProvider(LocalSheetStackEntry provides entry) {
             BetterSheetHost(
                 state, snapPoints, modifier, behavior, bodyMode, title, maxWidth, topMargin,
-                containerColor, contentColor, scrimColor, shape, dragHandle, header, footer, surfaceModifier, presentation, content,
+                containerColor, contentColor, scrimColor, shape, dragHandle, header, footer, surfaceModifier, presentation, enterTransition, exitTransition, snapAnimationSpec, content,
             )
         }
     }
@@ -156,6 +158,9 @@ public fun BetterSheetHost(
     footer: @Composable (() -> Unit)? = null,
     surfaceModifier: Modifier = Modifier,
     presentation: SheetPresentation = SheetPresentation.Standard,
+    enterTransition: EnterTransition = slideInVertically(defaultSheetSpring()) { it },
+    exitTransition: ExitTransition = slideOutVertically(defaultSheetSpring()) { it },
+    snapAnimationSpec: AnimationSpec<Float> = defaultSheetSpring(),
     content: @Composable ColumnScope.() -> Unit,
 ) {
     require(snapPoints.isNotEmpty() && snapPoints.map { it.id }.distinct().size == snapPoints.size)
@@ -164,6 +169,17 @@ public fun BetterSheetHost(
     }
     require(maxWidth.value.isFinite() && maxWidth > 0.dp)
     require(topMargin.value.isFinite() && topMargin >= 0.dp)
+    SideEffect {
+        state.preparePresentation()
+        state.configureAnimations(snapAnimationSpec)
+    }
+    LaunchedEffect(state) {
+        if (state.initialPresentationPending) {
+            state.initialPresentationPending = false
+            state.enter()
+        }
+    }
+    val visibilityScope = rememberSheetVisibilityScope(state)
     val deviceCornerRadius = rememberSheetDeviceCornerRadius()
     val hostView = LocalView.current
     var hostReachesWindowEdges by remember { mutableStateOf(false) }
@@ -184,7 +200,7 @@ public fun BetterSheetHost(
             if (!contentInitialized || !state.hasPresented) {
                 animatedContentHeight.snapTo(naturalBodyHeight.toFloat())
                 contentInitialized = true
-            } else animatedContentHeight.animateTo(naturalBodyHeight.toFloat(), state.animationSpec)
+            } else animatedContentHeight.animateTo(naturalBodyHeight.toFloat(), defaultSheetSpring())
         }
     }
     val isVisible by remember(state) { derivedStateOf { state.isVisible } }
@@ -193,18 +209,18 @@ public fun BetterSheetHost(
     val imeInset = WindowInsets.ime.getBottom(density)
     val imeVisible = imeInset > navInset
     val bottomInset = if (behavior.keyboardBehavior == SheetKeyboardBehavior.Ignore) navInset else maxOf(navInset, imeInset)
-    val fling = AnchoredDraggableDefaults.flingBehavior(state.anchored, animationSpec = state.animationSpec)
+    val fling = AnchoredDraggableDefaults.flingBehavior(state.anchored, animationSpec = snapAnimationSpec)
     val velocityThreshold = with(density) { 125.dp.toPx() }
     val backgroundTouchSlop = with(density) { 24.dp.toPx() }
     val releaseBackground by remember(state, backgroundTouchSlop) {
         derivedStateOf {
             val g = state.geometry ?: return@derivedStateOf false
-            releasesBackgroundPointer(
+            !state.presentationActive || (!state.presentationExiting && releasesBackgroundPointer(
                 targetHidden = state.hasPresented && state.targetSnapPoint == null,
                 dragInProgress = state.dragInProgress,
                 visibleHeight = (g.availableHeight - state.offsetOrHidden()).coerceAtLeast(0f),
                 slop = backgroundTouchSlop,
-            )
+            ))
         }
     }
     val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
@@ -227,7 +243,7 @@ public fun BetterSheetHost(
                 state.expand()
             } else if (!imeVisible) {
                 beforeIme?.let { id ->
-                    state.geometry?.let { g -> if (g.canonical(id) in g.offsets && state.isVisible) state.animateTo(id) }
+                    state.geometry?.let { g -> if (g.canonical(id) in g.offsets && state.isVisible) state.snapTo(id) }
                 }
                 beforeIme = null
             }
@@ -267,7 +283,7 @@ public fun BetterSheetHost(
                         val visible = geometry.availableHeight - state.offsetOrHidden()
                         val smallestHeight = geometry.availableHeight - geometry.offsets.getValue(geometry.smallest)
                         val fraction = scrimDragFraction(visible, smallestHeight, behavior.scrimFollowsDrag)
-                        drawRect(scrimColor.copy(alpha = scrimColor.alpha * fraction))
+                        drawRect(scrimColor.copy(alpha = scrimColor.alpha * fraction * state.presentationFraction))
                     }
                 }
                 .then(when {
@@ -307,6 +323,11 @@ public fun BetterSheetHost(
             topEnd = radius * (1f - morph) + tray.expandedCornerRadius * morph,
             bottomStart = radius * (1f - morph), bottomEnd = radius * (1f - morph),
         )
+        // One transition wraps the surface and its navigation-bar continuation together.
+        // The body remains composed and measured while hidden, preserving content state.
+        Box(Modifier.align(Alignment.BottomCenter).then(with(visibilityScope) {
+            Modifier.animateEnterExit(enterTransition, exitTransition, "Sheet presentation")
+        }).sheetPresentationPlacement(state)) {
         if (tray == null && isVisible && navInset > 0 && !keyboardCoversNav) {
             // The sheet sits on the bottom edge. Continue its color under the navigation
             // bar so the bar does not pick up a separate, darker system scrim.
@@ -336,6 +357,7 @@ public fun BetterSheetHost(
                 .then(if (behavior.draggable) Modifier.nestedScroll(nested).pointerInput(nested) {
                     awaitEachGesture {
                         awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                        state.catchExitingPresentation()
                         nested.beginGesture()
                     }
                 } else Modifier)
@@ -398,6 +420,7 @@ public fun BetterSheetHost(
             val child = measurables.single().measure(Constraints.fixed(constraints.maxWidth, childHeight))
             layout(constraints.maxWidth, visible) { child.place(0, 0) }
         }
+        }
     }
 }
 
@@ -438,3 +461,4 @@ private fun Window.clearSheetSystemBarChrome() {
         isNavigationBarContrastEnforced = false
     }
 }
+

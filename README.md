@@ -106,7 +106,7 @@ BetterModalSheet(
 Keep `BetterModalSheet` mounted and control visibility with `state.show()` / `state.hide()`. Its dialog is removed after dismissal. `onDismissed` is optional; callers may still remove the composable in that callback.
 
 ```kotlin
-scope.launch { state.animateTo("peek") }
+scope.launch { state.snapTo("peek") }
 scope.launch { state.expand() }
 scope.launch { state.collapse() }
 scope.launch { state.hide() }
@@ -490,3 +490,49 @@ the sample gallery or the people sheet in the Find My sample. Reproduce the reco
 ## License
 
 Apache 2.0. See [CHANGELOG](CHANGELOG.md), [architecture](docs/ARCHITECTURE.md), and [contributing](CONTRIBUTING.md).
+
+
+## Animation customization
+
+Configure animations on `BetterSheet`, `BetterModalSheet`, or `BetterSheetHost`:
+
+```kotlin
+val state = rememberSheetState(initialSnapPoint = "medium")
+BetterModalSheet(
+    state = state,
+    snapPoints = snapPoints,
+    enterTransition = fadeIn(animationSpec = tween(220)),
+    exitTransition = fadeOut(animationSpec = tween(180)),
+    snapAnimationSpec = spring(dampingRatio = 0.8f, stiffness = 350f),
+) {
+    SheetContent()
+}
+```
+
+Use standard `androidx.compose.animation` transitions: `fadeIn`/`fadeOut`,
+`slideInVertically`/`slideOutVertically`, `scaleIn`/`scaleOut`, or combinations with `+`.
+Defaults slide vertically with the existing critically damped spring. `EnterTransition.None`
+and `ExitTransition.None` skip the surface transition. The scrim has a short independent fade.
+
+- `state.snapTo("expanded")` animates using `snapAnimationSpec`. Calling it while hidden enters
+  at the requested snap point using `enterTransition`.
+- `state.jumpTo("expanded")` immediately selects the snap point and skips the entrance.
+- `show()`, `hide()`, `expand()`, and `collapse()` use the composable configuration.
+- Back and scrim dismissal use `exitTransition`; `hide()` and `onDismissed` wait for completion.
+- Dragging stays attached to the finger. Drag release uses `snapAnimationSpec`, including a drag
+  to dismiss; it does not replay a decorative exit after reaching the bottom.
+- Mounted inline/fragment content retains its form and scroll state across hide/show. A modal's
+  dialog is disposed after dismissal. A new show/hide request interrupts the previous operation.
+- Rubber-band recovery and content resizing retain internal spring defaults.
+
+### Animation examples
+
+Spring snapping, fade with tween snapping, and slide + fade using the same sheet content:
+
+![Animation customization](docs/videos/animations.gif)
+
+[Watch the animation examples](docs/videos/animations.mp4)
+
+**Migration:** `animateTo(id)` is now `snapTo(id)`. The previous immediate `snapTo(id)` is now
+`jumpTo(id)`. Move `rememberSheetState(animationSpec = …)` to the composable's
+`snapAnimationSpec`; enter/exit timing is configured directly on Compose transitions.

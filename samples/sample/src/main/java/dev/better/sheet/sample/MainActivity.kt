@@ -72,6 +72,7 @@ object OpenTimings {
 
 enum class Demo(val label: String, val subtitle: String) {
     SnapPoints("Snap Points", "Peek, medium, expanded • scroll handoff"),
+    Animations("Animations", "Spring • fade • slide + fade"),
     Tray("Floating tray", "Inset corners • continuous edge-to-edge morph"),
     Chat("Chat", "Lazy list • composer above keyboard"),
     Fit("Content fit", "Intrinsic size • live content changes"),
@@ -137,6 +138,10 @@ private fun Gallery(autoOpen: Demo?) {
 
 @Composable
 private fun DemoSheet(demo: Demo, openedAt: Long, close: () -> Unit) {
+    if (demo == Demo.Animations) {
+        AnimationGallery(close)
+        return
+    }
     if (demo == Demo.Stack) {
         StackedSheets(close)
         return
@@ -184,7 +189,7 @@ private fun DemoSheet(demo: Demo, openedAt: Long, close: () -> Unit) {
             if (demo != Demo.Fit) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("peek", "medium", "expanded").forEach { id ->
-                        FilterChip(selected = state.currentSnapPoint == id, onClick = { scope.launch { state.animateTo(id) } }, label = { Text(id.replaceFirstChar { it.uppercase() }) }, modifier = Modifier.testTag("snap-point-$id"))
+                        FilterChip(selected = state.currentSnapPoint == id, onClick = { scope.launch { state.snapTo(id) } }, label = { Text(id.replaceFirstChar { it.uppercase() }) }, modifier = Modifier.testTag("snap-point-$id"))
                     }
                 }
             }
@@ -460,3 +465,4 @@ private suspend fun recordOpenTiming(demo: Demo, state: dev.better.sheet.SheetSt
     }
     OpenTimings.results[demo.name] = OpenTiming(firstMotion - openedAt, previous - openedAt, longest, frames)
 }
+

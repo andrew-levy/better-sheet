@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Add standard Compose enter/exit transitions and `snapAnimationSpec` to all three sheet composables.
+- Rename animated `SheetState.animateTo` to `snapTo`, and the previous immediate `snapTo` to `jumpTo`.
+- Move animation configuration from `rememberSheetState` to the sheet composable. Rubber-band recovery
+  and live content resizing retain internal defaults.
+- Preserve mounted content during visibility transitions and wait for completed exits before dismissal.
+- Add a recorded animation gallery comparing spring, fade/tween, and slide + fade.
+
+
 All notable changes to Better Sheet are documented here. The project follows
 [Semantic Versioning](https://semver.org); while the version is 0.x, minor releases may change
 public API.
@@ -128,3 +138,4 @@ Initial public release.
 
 [0.5.0]: https://github.com/andrew-levy/better-sheet/releases/tag/0.5.0
 [0.4.0]: https://github.com/andrew-levy/better-sheet/releases/tag/0.4.0
+
