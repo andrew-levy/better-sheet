@@ -56,7 +56,7 @@ if __name__ == '__main__':
     if not args.skip_build:
         run(str(ROOT / 'gradlew'), ':sample:assembleDebug', ':sample:assembleDebugAndroidTest', cwd=ROOT)
     run('adb', 'wait-for-device')
-    run('adb', 'install', '-r', str(ROOT / 'sample/build/outputs/apk/debug/sample-debug.apk'))
+    run('adb', 'install', '-r', str(ROOT / 'samples/sample/build/outputs/apk/debug/sample-debug.apk'))
     run('adb', 'install', '-r', str(ROOT / 'sample/build/outputs/apk/androidTest/debug/sample-debug-androidTest.apk'))
     run('adb', 'shell', 'settings', 'put', 'secure', 'show_ime_with_hard_keyboard', '1')
     failures = []

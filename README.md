@@ -294,7 +294,7 @@ class OrderSheetFragment : Fragment() {
 Mount the Fragment in a full-window container so the scrim can cover the background. For
 back-stack navigation, replace the removal callback with your navigation's pop operation.
 The sheet handles Back while visible. Avoid a second Fragment slide transition on the same view.
-See the runnable [Fragment sample](sample/src/main/java/dev/better/sheet/sample/FragmentDemoActivity.kt).
+See the runnable [Fragment sample](samples/sample/src/main/java/dev/better/sheet/sample/FragmentDemoActivity.kt).
 
 `BetterSheetHost` remains a lower-level public rendering API. Prefer `BetterSheet` for inline
 usage with managed entry/exit and `onDismissed`.

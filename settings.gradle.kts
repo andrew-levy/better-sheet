@@ -5,3 +5,6 @@ dependencyResolutionManagement {
 }
 rootProject.name = "better-sheet"
 include(":better-sheet", ":sample", ":findmy")
+
+project(":sample").projectDir = file("samples/sample")
+project(":findmy").projectDir = file("samples/findmy")
