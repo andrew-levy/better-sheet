@@ -36,8 +36,8 @@ internal fun Modifier.sheetNavigationCover(color: Color, heightPx: Float): Modif
     if (height > 0f) drawRect(color, Offset(0f, size.height - height), Size(size.width, height))
 }
 
-/** Keep depth above/beside a floating tray without a second, offset lip below its bottom. */
-internal fun Modifier.sheetTrayShadow(elevation: Dp, shape: Shape): Modifier =
+/** Keep depth above/beside the surface without tinting the navigation area below it. */
+internal fun Modifier.sheetSurfaceShadow(elevation: Dp, shape: Shape): Modifier =
     drawWithContent {
         val spread = elevation.toPx() * 3f
         clipRect(left = -spread, top = -spread, right = size.width + spread, bottom = size.height) {

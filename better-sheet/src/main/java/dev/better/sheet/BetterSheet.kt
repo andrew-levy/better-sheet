@@ -24,7 +24,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -326,8 +325,7 @@ public fun BetterSheetHost(
             .widthIn(max = maxWidth).fillMaxWidth()
             .padding(horizontal = traySide)
             .then(surfaceModifier)
-            .then(if (tray == null) Modifier.shadow(16.dp, surfaceShape, clip = false)
-                else Modifier.sheetTrayShadow(16.dp * (1f - morph), surfaceShape))
+            .sheetSurfaceShadow(if (tray == null) 16.dp else 16.dp * (1f - morph), surfaceShape)
             .sheetDrawClip { surfaceShape }
             .sheetNavigationCover(containerColor, navExtension)
 

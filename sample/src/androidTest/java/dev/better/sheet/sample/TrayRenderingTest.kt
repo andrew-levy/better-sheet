@@ -28,6 +28,7 @@ class TrayRenderingTest {
         lateinit var state: SheetState
         lateinit var scope: CoroutineScope
         val initialized = java.util.concurrent.atomic.AtomicBoolean(false)
+        var presentation by mutableStateOf<SheetPresentation>(SheetPresentation.Tray())
         var surfaceBottom = 0f
         var footerBottom = 0f
         var footerCenter = 0f
@@ -39,7 +40,7 @@ class TrayRenderingTest {
                 Box(Modifier.fillMaxSize().background(Color.Green))
                 BetterModalSheet(state,
                     listOf(SheetSnapPoint.fraction("medium", .6f), SheetSnapPoint.expanded()),
-                    presentation = SheetPresentation.Tray(),
+                    presentation = presentation,
                     containerColor = Color.Cyan,
                     surfaceModifier = Modifier.onGloballyPositioned { surfaceBottom = it.boundsInWindow().bottom },
                     bodyMode = SheetBodyMode.Fill,
@@ -70,43 +71,47 @@ class TrayRenderingTest {
             }
             fun screenshot(): Bitmap = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
             awaitSettled("medium")
-            repeat(3) {
-                for (target in listOf("expanded", "medium")) {
-                    instrumentation.runOnMainSync { scope.launch { state.animateTo(target) } }
-                    awaitSettled(target)
-                    repeat(3) {
-                        val shot = screenshot()
-                        try {
-                            var magenta = 0
-                            for (y in 0 until shot.height step 4) for (x in 0 until shot.width step 4) {
-                                val pixel = shot.getPixel(x, y)
-                                if (android.graphics.Color.red(pixel) > 240 && android.graphics.Color.blue(pixel) > 240 &&
-                                    android.graphics.Color.green(pixel) < 15) magenta++
-                            }
-                            assertTrue("Visible tray header disappeared at $target", magenta > 100)
-                            if (target == "medium") {
-                                val y = surfaceBottom.toInt() + 2
-                                if (y < shot.height) {
-                                    // Uniform host + scrim: pixels below the tray should match
-                                    // untouched background on the same scanline, not a gray shelf.
-                                    val below = shot.getPixel(footerCenter.toInt(), y)
-                                    val outside = shot.getPixel(2, y)
-                                    assertEquals("Tray shadow formed a lip below the bottom edge",
-                                        android.graphics.Color.green(outside).toFloat(), android.graphics.Color.green(below).toFloat(), 2f)
-                                }
-                            }
-                            if (target == "expanded") {
-                                val x = footerCenter.toInt().coerceIn(0, shot.width - 1)
-                                val y = footerBottom.toInt() + 2
-                                if (y < shot.height - 2) {
+            for (style in listOf(SheetPresentation.Tray(), SheetPresentation.Standard)) {
+                instrumentation.runOnMainSync { presentation = style }
+                awaitSettled("medium")
+                repeat(3) {
+                    for (target in listOf("expanded", "medium")) {
+                        instrumentation.runOnMainSync { scope.launch { state.animateTo(target) } }
+                        awaitSettled(target)
+                        repeat(3) {
+                            val shot = screenshot()
+                            try {
+                                var magenta = 0
+                                for (y in 0 until shot.height step 4) for (x in 0 until shot.width step 4) {
                                     val pixel = shot.getPixel(x, y)
-                                    assertTrue("Footer shadow leaked into navigation area",
-                                        android.graphics.Color.red(pixel) < 15 &&
-                                        android.graphics.Color.green(pixel) > 240 && android.graphics.Color.blue(pixel) > 240)
+                                    if (android.graphics.Color.red(pixel) > 240 && android.graphics.Color.blue(pixel) > 240 &&
+                                        android.graphics.Color.green(pixel) < 15) magenta++
                                 }
-                            }
-                        } finally { shot.recycle() }
-                        SystemClock.sleep(50)
+                                assertTrue("Visible tray header disappeared at $target", magenta > 100)
+                                if (target == "medium" && style is SheetPresentation.Tray) {
+                                    val y = surfaceBottom.toInt() + 2
+                                    if (y < shot.height) {
+                                        // Uniform host + scrim: pixels below the tray should match
+                                        // untouched background on the same scanline, not a gray shelf.
+                                        val below = shot.getPixel(footerCenter.toInt(), y)
+                                        val outside = shot.getPixel(2, y)
+                                        assertEquals("Tray shadow formed a lip below the bottom edge",
+                                            android.graphics.Color.green(outside).toFloat(), android.graphics.Color.green(below).toFloat(), 2f)
+                                    }
+                                }
+                                if (target == "expanded" || style == SheetPresentation.Standard) {
+                                    val x = footerCenter.toInt().coerceIn(0, shot.width - 1)
+                                    val y = footerBottom.toInt() + 2
+                                    if (y < shot.height - 2) {
+                                        val pixel = shot.getPixel(x, y)
+                                        assertTrue("Footer shadow leaked into navigation area",
+                                            android.graphics.Color.red(pixel) < 15 &&
+                                            android.graphics.Color.green(pixel) > 240 && android.graphics.Color.blue(pixel) > 240)
+                                    }
+                                }
+                            } finally { shot.recycle() }
+                            SystemClock.sleep(50)
+                        }
                     }
                 }
             }
