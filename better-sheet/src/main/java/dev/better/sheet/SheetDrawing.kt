@@ -2,6 +2,8 @@ package dev.better.sheet
 
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -10,6 +12,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.clipRect
 
 /**
  * Clip pixels in the draw pass, not the RenderNode layer. Animated layer outlines can leave
@@ -32,3 +35,12 @@ internal fun Modifier.sheetNavigationCover(color: Color, heightPx: Float): Modif
     val height = heightPx.coerceIn(0f, size.height)
     if (height > 0f) drawRect(color, Offset(0f, size.height - height), Size(size.width, height))
 }
+
+/** Keep depth above/beside a floating tray without a second, offset lip below its bottom. */
+internal fun Modifier.sheetTrayShadow(elevation: Dp, shape: Shape): Modifier =
+    drawWithContent {
+        val spread = elevation.toPx() * 3f
+        clipRect(left = -spread, top = -spread, right = size.width + spread, bottom = size.height) {
+            this@drawWithContent.drawContent()
+        }
+    }.shadow(elevation, shape, clip = false)

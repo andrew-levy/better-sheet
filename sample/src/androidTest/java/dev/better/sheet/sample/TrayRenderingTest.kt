@@ -28,6 +28,7 @@ class TrayRenderingTest {
         lateinit var state: SheetState
         lateinit var scope: CoroutineScope
         val initialized = java.util.concurrent.atomic.AtomicBoolean(false)
+        var surfaceBottom = 0f
         var footerBottom = 0f
         var footerCenter = 0f
         ActivityScenario.launch(MainActivity::class.java).use { activity ->
@@ -35,10 +36,12 @@ class TrayRenderingTest {
                 state = rememberSheetState("medium")
                 scope = rememberCoroutineScope()
                 SideEffect { initialized.set(true) }
+                Box(Modifier.fillMaxSize().background(Color.Green))
                 BetterModalSheet(state,
                     listOf(SheetSnapPoint.fraction("medium", .6f), SheetSnapPoint.expanded()),
                     presentation = SheetPresentation.Tray(),
                     containerColor = Color.Cyan,
+                    surfaceModifier = Modifier.onGloballyPositioned { surfaceBottom = it.boundsInWindow().bottom },
                     bodyMode = SheetBodyMode.Fill,
                     header = { Box(Modifier.fillMaxWidth().height(48.dp).background(Color.Magenta)) },
                     footer = {
@@ -81,6 +84,17 @@ class TrayRenderingTest {
                                     android.graphics.Color.green(pixel) < 15) magenta++
                             }
                             assertTrue("Visible tray header disappeared at $target", magenta > 100)
+                            if (target == "medium") {
+                                val y = surfaceBottom.toInt() + 2
+                                if (y < shot.height) {
+                                    // Uniform host + scrim: pixels below the tray should match
+                                    // untouched background on the same scanline, not a gray shelf.
+                                    val below = shot.getPixel(footerCenter.toInt(), y)
+                                    val outside = shot.getPixel(2, y)
+                                    assertEquals("Tray shadow formed a lip below the bottom edge",
+                                        android.graphics.Color.green(outside).toFloat(), android.graphics.Color.green(below).toFloat(), 2f)
+                                }
+                            }
                             if (target == "expanded") {
                                 val x = footerCenter.toInt().coerceIn(0, shot.width - 1)
                                 val y = footerBottom.toInt() + 2
