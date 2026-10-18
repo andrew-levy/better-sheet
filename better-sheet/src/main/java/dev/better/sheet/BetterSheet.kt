@@ -51,9 +51,6 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.ensureActive
-import kotlin.coroutines.coroutineContext
 import kotlin.math.roundToInt
 
 /**
@@ -328,98 +325,98 @@ public fun BetterSheetHost(
         Box(Modifier.align(Alignment.BottomCenter).then(with(visibilityScope) {
             Modifier.animateEnterExit(enterTransition, exitTransition, "Sheet presentation")
         }).sheetPresentationPlacement(state)) {
-        if (tray == null && isVisible && navInset > 0 && !keyboardCoversNav) {
-            // The sheet sits on the bottom edge. Continue its color under the navigation
-            // bar so the bar does not pick up a separate, darker system scrim.
-            Box(Modifier.align(Alignment.BottomCenter)
+            if (tray == null && isVisible && navInset > 0 && !keyboardCoversNav) {
+                // The sheet sits on the bottom edge. Continue its color under the navigation
+                // bar so the bar does not pick up a separate, darker system scrim.
+                Box(Modifier.align(Alignment.BottomCenter)
+                    .downwardRubber(state)
+                    .windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout).only(WindowInsetsSides.Horizontal))
+                    .widthIn(max = maxWidth).fillMaxWidth()
+                    .height(with(density) { navInset.toDp() })
+                    .background(containerColor))
+            }
+            val sheetSurfaceModifier = Modifier
+                .align(Alignment.BottomCenter)
                 .downwardRubber(state)
+                .padding(bottom = with(density) { (bottomInset - navExtension).toDp() } + trayGap)
                 .windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout).only(WindowInsetsSides.Horizontal))
                 .widthIn(max = maxWidth).fillMaxWidth()
-                .height(with(density) { navInset.toDp() })
-                .background(containerColor))
-        }
-        val sheetSurfaceModifier = Modifier
-            .align(Alignment.BottomCenter)
-            .downwardRubber(state)
-            .padding(bottom = with(density) { (bottomInset - navExtension).toDp() } + trayGap)
-            .windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout).only(WindowInsetsSides.Horizontal))
-            .widthIn(max = maxWidth).fillMaxWidth()
-            .padding(horizontal = traySide)
-            .then(surfaceModifier)
-            .sheetSurfaceShadow(if (tray == null) 16.dp else 16.dp * (1f - morph), surfaceShape)
-            .sheetDrawClip { surfaceShape }
-            .sheetNavigationCover(containerColor, navExtension)
+                .padding(horizontal = traySide)
+                .then(surfaceModifier)
+                .sheetSurfaceShadow(if (tray == null) 16.dp else 16.dp * (1f - morph), surfaceShape)
+                .sheetDrawClip { surfaceShape }
+                .sheetNavigationCover(containerColor, navExtension)
 
-        Layout(modifier = sheetSurfaceModifier, content = {
-            Layout(modifier = Modifier.fillMaxWidth()
-                .background(containerColor)
-                .padding(bottom = with(density) { navExtension.toDp() })
-                .then(if (behavior.draggable) Modifier.nestedScroll(nested).pointerInput(nested) {
-                    awaitEachGesture {
-                        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                        state.catchExitingPresentation()
-                        nested.beginGesture()
-                    }
-                } else Modifier)
-                .semantics {
-                    if (!isVisible) hideFromAccessibility()
-                    paneTitle = title
-                    isTraversalGroup = true
-                    stateDescription = state.currentSnapPoint ?: "Hidden"
-                    if (behavior.dismissOnDrag) dismiss { scope.launch { state.hide() }; true }
-                    expand { scope.launch { state.expand() }; true }
-                    collapse { scope.launch { state.collapse() }; true }
-                }, content = {
-                // Foundation only: no Material theme is imposed on consumers.
-                CompositionLocalProvider(LocalSheetContentColor provides contentColor) {
-                    Column(Modifier.fillMaxWidth().onSizeChanged { headerHeight = it.height; headerMeasured = true }
-                        .anchoredDraggable(
-                            state.anchored,
-                            Orientation.Vertical,
-                            enabled = behavior.draggable,
-                            overscrollEffect = edgeOverscroll,
-                            flingBehavior = fling,
-                        )) {
-                        dragHandle?.invoke()
-                        header?.invoke()
-                    }
-                    if (bodyMode == SheetBodyMode.Scroll) {
-                        val scroll = rememberScrollState()
-                        Box(Modifier.fillMaxWidth().clipToBoundsForSheet().verticalScroll(scroll)) {
-                            Column(Modifier.fillMaxWidth().onSizeChanged { naturalBodyHeight = it.height; bodyMeasured = true }, content = content)
+            Layout(modifier = sheetSurfaceModifier, content = {
+                Layout(modifier = Modifier.fillMaxWidth()
+                    .background(containerColor)
+                    .padding(bottom = with(density) { navExtension.toDp() })
+                    .then(if (behavior.draggable) Modifier.nestedScroll(nested).pointerInput(nested) {
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                            state.catchExitingPresentation()
+                            nested.beginGesture()
                         }
-                    } else {
-                        Column(Modifier.fillMaxWidth().clipToBoundsForSheet(), content = content)
+                    } else Modifier)
+                    .semantics {
+                        if (!isVisible) hideFromAccessibility()
+                        paneTitle = title
+                        isTraversalGroup = true
+                        stateDescription = state.currentSnapPoint ?: "Hidden"
+                        if (behavior.dismissOnDrag) dismiss { scope.launch { state.hide() }; true }
+                        expand { scope.launch { state.expand() }; true }
+                        collapse { scope.launch { state.collapse() }; true }
+                    }, content = {
+                    // Foundation only: no Material theme is imposed on consumers.
+                    CompositionLocalProvider(LocalSheetContentColor provides contentColor) {
+                        Column(Modifier.fillMaxWidth().onSizeChanged { headerHeight = it.height; headerMeasured = true }
+                            .anchoredDraggable(
+                                state.anchored,
+                                Orientation.Vertical,
+                                enabled = behavior.draggable,
+                                overscrollEffect = edgeOverscroll,
+                                flingBehavior = fling,
+                            )) {
+                            dragHandle?.invoke()
+                            header?.invoke()
+                        }
+                        if (bodyMode == SheetBodyMode.Scroll) {
+                            val scroll = rememberScrollState()
+                            Box(Modifier.fillMaxWidth().clipToBoundsForSheet().verticalScroll(scroll)) {
+                                Column(Modifier.fillMaxWidth().onSizeChanged { naturalBodyHeight = it.height; bodyMeasured = true }, content = content)
+                            }
+                        } else {
+                            Column(Modifier.fillMaxWidth().clipToBoundsForSheet(), content = content)
+                        }
+                        Box(Modifier.fillMaxWidth().onSizeChanged { footerHeight = it.height; footerMeasured = true }) { footer?.invoke() }
                     }
-                    Box(Modifier.fillMaxWidth().onSizeChanged { footerHeight = it.height; footerMeasured = true }) { footer?.invoke() }
+                }) { parts, bounds ->
+                    // A small window or tall header must not consume a fitting footer's space.
+                    // Upward stretch grows this height from the top. The footer stays on the bottom edge.
+                    val width = bounds.maxWidth
+                    val height = bounds.maxHeight
+                    val footerPart = parts[2].measure(Constraints(minWidth = width, maxWidth = width, maxHeight = height))
+                    val headerPart = parts[0].measure(Constraints(minWidth = width, maxWidth = width, maxHeight = height - footerPart.height))
+                    val bodyHeight = (height - footerPart.height - headerPart.height).coerceAtLeast(0)
+                    val bodyPart = parts[1].measure(Constraints.fixed(width, bodyHeight))
+                    layout(width, height) {
+                        headerPart.place(0, 0)
+                        bodyPart.place(0, headerPart.height)
+                        footerPart.place(0, height - footerPart.height)
+                    }
                 }
-            }) { parts, bounds ->
-                // A small window or tall header must not consume a fitting footer's space.
-                // Upward stretch grows this height from the top. The footer stays on the bottom edge.
-                val width = bounds.maxWidth
-                val height = bounds.maxHeight
-                val footerPart = parts[2].measure(Constraints(minWidth = width, maxWidth = width, maxHeight = height))
-                val headerPart = parts[0].measure(Constraints(minWidth = width, maxWidth = width, maxHeight = height - footerPart.height))
-                val bodyHeight = (height - footerPart.height - headerPart.height).coerceAtLeast(0)
-                val bodyPart = parts[1].measure(Constraints.fixed(width, bodyHeight))
-                layout(width, height) {
-                    headerPart.place(0, 0)
-                    bodyPart.place(0, headerPart.height)
-                    footerPart.place(0, height - footerPart.height)
-                }
+            }) { measurables, constraints ->
+                // Offset reads happen in measurement, not composition, on each drag/animation frame.
+                val visibleHeight = (availablePx - state.offsetOrHidden()).coerceIn(0f, availablePx)
+                val stretch = upwardStretch(state.rubberTranslation)
+                val base = if (chrome == 0) availablePx else visibleHeight.coerceAtLeast(chrome.toFloat().coerceAtMost(availablePx))
+                // Compensate the external gap/extension so the top edge stays on its detent.
+                val adjustment = navExtension - trayGap.toPx()
+                val childHeight = (base + stretch + adjustment).roundToInt().coerceAtLeast(0)
+                val visible = (visibleHeight + stretch + adjustment).roundToInt().coerceAtLeast(0)
+                val child = measurables.single().measure(Constraints.fixed(constraints.maxWidth, childHeight))
+                layout(constraints.maxWidth, visible) { child.place(0, 0) }
             }
-        }) { measurables, constraints ->
-            // Offset reads happen in measurement, not composition, on each drag/animation frame.
-            val visibleHeight = (availablePx - state.offsetOrHidden()).coerceIn(0f, availablePx)
-            val stretch = upwardStretch(state.rubberTranslation)
-            val base = if (chrome == 0) availablePx else visibleHeight.coerceAtLeast(chrome.toFloat().coerceAtMost(availablePx))
-            // Compensate the external gap/extension so the top edge stays on its detent.
-            val adjustment = navExtension - trayGap.toPx()
-            val childHeight = (base + stretch + adjustment).roundToInt().coerceAtLeast(0)
-            val visible = (visibleHeight + stretch + adjustment).roundToInt().coerceAtLeast(0)
-            val child = measurables.single().measure(Constraints.fixed(constraints.maxWidth, childHeight))
-            layout(constraints.maxWidth, visible) { child.place(0, 0) }
-        }
         }
     }
 }

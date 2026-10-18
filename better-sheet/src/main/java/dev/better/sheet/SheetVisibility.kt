@@ -20,14 +20,14 @@ import androidx.compose.ui.layout.layout
  */
 @Composable
 internal fun rememberSheetVisibilityScope(state: SheetState): AnimatedVisibilityScope {
-    val transition = updateTransition(state.visibility, label = "Sheet visibility")
-    val fraction by transition.animateFloat(
+    val visibilityTransition = updateTransition(state.visibility, label = "Sheet visibility")
+    val fraction by visibilityTransition.animateFloat(
         transitionSpec = { tween(150) }, label = "Sheet scrim and stack progress",
     ) { if (it == EnterExitState.Visible) 1f else 0f }
     SideEffect { state.presentationFraction = fraction }
-    return remember(transition) {
+    return remember(visibilityTransition) {
         object : AnimatedVisibilityScope {
-            override val transition: Transition<EnterExitState> = transition
+            override val transition: Transition<EnterExitState> = visibilityTransition
         }
     }
 }

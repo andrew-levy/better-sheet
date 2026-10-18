@@ -5,7 +5,6 @@ import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.foundation.MutatorMutex
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.DraggableAnchors
 import androidx.compose.foundation.gestures.animateTo
@@ -30,7 +29,7 @@ public class SheetState internal constructor(
     internal val initiallyVisible: Boolean = true,
 ) {
     internal var snapAnimationSpec: AnimationSpec<Float> by mutableStateOf(animationSpec)
-    internal var visibility = MutableTransitionState(EnterExitState.PreEnter)
+    internal var visibility by mutableStateOf(MutableTransitionState(EnterExitState.PreEnter))
         private set
     internal var presentationFraction by mutableFloatStateOf(0f)
     internal var transitionsManaged = false
@@ -209,7 +208,10 @@ public class SheetState internal constructor(
                 awaitPresentation(EnterExitState.PostExit)
                 anchored.snapTo(HiddenId)
             } else anchored.animateTo(HiddenId, snapAnimationSpec)
-        } finally { programmaticHide = false }
+        } finally {
+            programmaticHide = false
+            updateAnchors()
+        }
     }
 
     internal suspend fun enter() = show()
@@ -353,7 +355,7 @@ public class SheetState internal constructor(
     }
 }
 
-/** The default settle matches an iOS sheet: short, critically damped, and it keeps the flick. */
+/** Hoisted sheet state. Configure enter, exit and snap animations on the sheet composable. */
 @Composable
 public fun rememberSheetState(
     initialSnapPoint: String = "expanded",
