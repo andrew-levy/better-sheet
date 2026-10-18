@@ -18,11 +18,11 @@ dependencyResolutionManagement {
 
 // app/build.gradle.kts
 dependencies {
-    implementation("com.github.andrew-levy:better-sheet:0.4.0")
+    implementation("com.github.andrew-levy:better-sheet:0.5.0")
 }
 ```
 
-To try a local build instead, run `./gradlew :better-sheet:publishToMavenLocal` and depend on `io.github.andrew-levy:better-sheet:0.4.0` with `mavenLocal()`.
+To try a local build instead, run `./gradlew :better-sheet:publishToMavenLocal` and depend on `io.github.andrew-levy:better-sheet:0.5.0` with `mavenLocal()`.
 
 The examples below use the `0.3.0` API. See the [changelog](CHANGELOG.md) for migration
 from `0.2.0`. App-specific content functions are placeholders.

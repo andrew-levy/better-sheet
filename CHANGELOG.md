@@ -6,6 +6,20 @@ public API.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-18
+
+### Added
+
+- Add the optional `SheetPresentation.Tray` presentation to `BetterSheet`,
+  `BetterSheetHost`, and `BetterModalSheet`. Tray margins and corner radii morph
+  smoothly as the sheet expands, with configurable insets, radii, and morph timing.
+- Use Android 12+ window corner metadata for collapsed tray corners when available.
+
+### Fixed
+
+- Keep sheets visible with shared draw-pass clipping for sheet and stack surfaces.
+- Bound sheet and footer shadows so they do not tint the navigation bar area.
+
 ## [0.4.0] - 2026-10-18
 
 ### Breaking API changes
@@ -112,4 +126,5 @@ Initial public release.
 [0.1.0]: https://github.com/andrew-levy/better-sheet/releases/tag/v0.1.0
 
 
+[0.5.0]: https://github.com/andrew-levy/better-sheet/releases/tag/0.5.0
 [0.4.0]: https://github.com/andrew-levy/better-sheet/releases/tag/0.4.0
