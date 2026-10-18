@@ -3,7 +3,6 @@ on:
   push:
     paths-ignore:
       - 'docs/videos/**'
-  pull_request:
   workflow_dispatch:
 permissions:
   contents: read
@@ -76,37 +75,9 @@ jobs:
         with:
           name: device-reports-${{ matrix.api }}
           path: samples/sample/build/reports/androidTests/
-  select-demos:
-    runs-on: ubuntu-latest
-    outputs:
-      scenarios: ${{ steps.select.outputs.scenarios }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Select impacted demos
-        id: select
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BEFORE: ${{ github.event.before }}
-        run: |
-          if [ "$EVENT_NAME" = workflow_dispatch ]; then
-            scenarios="snapPoints chat contentFit stacked heavyContent scrollHandoff tray"
-          elif [ "$EVENT_NAME" = pull_request ]; then
-            base=$(git merge-base HEAD origin/main)
-            scenarios=$(python3 scripts/select-demos.py --base "$base")
-          elif [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
-            scenarios="snapPoints chat contentFit stacked heavyContent scrollHandoff tray"
-          else
-            scenarios=$(python3 scripts/select-demos.py --base "$BEFORE")
-          fi
-          echo "scenarios=$scenarios" >> "$GITHUB_OUTPUT"
-          echo "Selected demos: ${scenarios:-none}"
   demos:
-    needs: select-demos
-    if: needs.select-demos.outputs.scenarios != '' && github.event_name != 'pull_request'
     env:
-      SCENARIOS: ${{ needs.select-demos.outputs.scenarios }}
+      SCENARIOS: snapPoints chat contentFit stacked heavyContent scrollHandoff tray
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
@@ -151,7 +122,7 @@ jobs:
 
   publish-demos:
     # Artifacts only become README assets after every validation job succeeds.
-    needs: [build, device, demos, select-demos]
+    needs: [build, device, demos]
     if: needs.demos.result == 'success' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     permissions:
@@ -181,7 +152,7 @@ jobs:
         if: steps.current.outputs.publish == 'true'
         env:
           RECORDINGS: ${{ runner.temp }}/demo-videos
-          SCENARIOS: ${{ needs.select-demos.outputs.scenarios }}
+          SCENARIOS: snapPoints chat contentFit stacked heavyContent scrollHandoff tray
           BRANCH_NAME: ${{ github.ref_name }}
         run: |
           python3 - <<'PY'
@@ -202,7 +173,6 @@ jobs:
               shutil.copyfile(asset, destination / name)
           PY
           git add -- docs/videos/
-          git rm -f --ignore-unmatch docs/videos/detents.gif docs/videos/detents.mp4
           if git diff --cached --quiet; then
             echo "Recordings already match the README assets."
           else
