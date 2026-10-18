@@ -67,3 +67,18 @@ TalkBack navigation and custom AndroidView nested-scroll interop. The shipped te
 CI are a starting point. Predictive Back progress, linked motion or a shared scrim across
 stacked modals, edge-to-edge visual tuning on every OEM, and a measured frame-time benchmark
 suite are not implemented. Separate `BetterModalSheet` calls do stack as independent dialogs.
+
+## Tray presentation
+
+`SheetPresentation.Tray` is surface geometry on the existing host, root and modal components.
+It shares detents, nested scroll, dismissal and the state animation clock. Morph progress is a
+smoothstep of visible height over available height (default final 40%); it is not an independently
+animated target. Short maximum detents remain floating. Overscroll is clamped for shape morphing.
+External side/bottom gaps shrink to zero. Surface height compensates for the bottom gap so the top
+edge stays on its resolved detent. Navigation space moves inside the surface as it expands; the
+footer remains above navigation controls. IME avoidance continues to use the existing policy.
+Tray gap is included in minimum chrome/content-fit measurement. Width changes remeasure content,
+rather than scaling text. Derived progress avoids extra composition below the morph threshold.
+Tray owns its rounded shape; Standard continues using the supplied `shape`. Android 12+ window
+corner metadata informs collapsed radii; older or embedded windows use the configured fallback.
+This is an opaque surface treatment, not a backdrop-blur or refraction implementation.

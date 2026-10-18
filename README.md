@@ -454,6 +454,37 @@ Open the project in Android Studio and run `sample` on Android 24+, with JDK 17 
 ./gradlew :sample:assembleDebug :better-sheet:testDebugUnitTest
 ```
 
+### Floating tray
+
+Use the same sheet with an iOS-inspired floating surface that joins the edges as it expands:
+
+```kotlin
+BetterSheet(
+    state = state,
+    snapPoints = listOf(
+        SheetSnapPoint.fraction("medium", 0.6f),
+        SheetSnapPoint.expanded(),
+    ),
+    presentation = SheetPresentation.Tray(),
+) {
+    // Your content
+}
+```
+
+Available on `BetterSheet`, `BetterSheetHost`, and `BetterModalSheet`. Defaults are 12.dp side
+and bottom gaps, 32.dp fallback corners, 28.dp expanded top corners, and morphing over the final
+40% of available height. Customize with `horizontalInset`, `bottomInset`, `cornerRadius`,
+`expandedCornerRadius`, `morphStartFraction`, and `matchDeviceCorners`. Android 12+ reported
+window corners inform the collapsed radius; use `matchDeviceCorners = false` for an explicit
+radius. Tray owns its shape; `shape` remains the Standard presentation's setting.
+
+Dragging, reversing, and programmatic snap changes all drive the same morph. Short sheets stay
+floating; navigation/keyboard safe areas remain protected. The existing `maxWidth` still applies
+on tablets. This adds the geometry, not Liquid Glass blur/refraction. Try **Floating tray** in
+the sample gallery or the people sheet in the Find My sample. Reproduce the recording with
+`python3 scripts/record-demos.py tray`.
+
+
 ## License
 
 Apache 2.0. See [CHANGELOG](CHANGELOG.md), [architecture](docs/ARCHITECTURE.md), and [contributing](CONTRIBUTING.md).

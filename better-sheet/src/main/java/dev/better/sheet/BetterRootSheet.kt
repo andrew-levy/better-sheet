@@ -39,6 +39,7 @@ public fun BetterSheet(
     header: @Composable (() -> Unit)? = null,
     footer: @Composable (() -> Unit)? = null,
     surfaceModifier: Modifier = Modifier,
+    presentation: SheetPresentation = SheetPresentation.Standard,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     SideEffect { state.preparePresentation() }
@@ -58,6 +59,6 @@ public fun BetterSheet(
     }
     BetterSheetHost(
         state, snapPoints, modifier, behavior, bodyMode, title, maxWidth, topMargin,
-        containerColor, contentColor, scrimColor, shape, dragHandle, header, footer, surfaceModifier, content,
+        containerColor, contentColor, scrimColor, shape, dragHandle, header, footer, surfaceModifier, presentation, content,
     )
 }

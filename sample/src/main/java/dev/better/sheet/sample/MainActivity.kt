@@ -72,6 +72,7 @@ object OpenTimings {
 
 enum class Demo(val label: String, val subtitle: String) {
     Detents("Detents", "Peek, medium, expanded • scroll handoff"),
+    Tray("Floating tray", "Inset corners • continuous edge-to-edge morph"),
     Chat("Chat", "Lazy list • composer above keyboard"),
     Fit("Content fit", "Intrinsic size • live content changes"),
     Stack("Stacked", "Modal sheets layered on one another"),
@@ -254,7 +255,9 @@ private fun DemoSheet(demo: Demo, openedAt: Long, close: () -> Unit) {
         BetterSheetHost(state, snapPoints, behavior = behavior, bodyMode = mode, title = demo.label, scrimColor = Color.Unspecified, header = header, footer = footer, content = body)
         LaunchedEffect(state) { snapshotFlow { state.currentSnapPoint }.collect { if (it == null) close() } }
     } else {
-        BetterModalSheet(state, snapPoints, close, behavior = behavior, bodyMode = mode, title = demo.label, header = header, footer = footer, content = body)
+        BetterModalSheet(state, snapPoints, close, behavior = behavior, bodyMode = mode, title = demo.label,
+            presentation = if (demo == Demo.Tray) SheetPresentation.Tray() else SheetPresentation.Standard,
+            header = header, footer = footer, content = body)
     }
 }
 

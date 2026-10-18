@@ -83,12 +83,13 @@ jobs:
           path: sample/build/reports/androidTests/
   demos:
     env:
+      TRAY_ONLY: ${{ github.ref != 'refs/heads/main' && github.event_name == 'push' && contains(github.event.head_commit.message, '[record-tray]') }}
       STACK_ONLY: ${{ github.ref != 'refs/heads/main' && github.event_name == 'push' && contains(github.event.head_commit.message, '[record-stack]') }}
-    # Main always records; feature branches can opt in with [record-demos] or [record-stack].
+    # Main always records; feature branches can opt in with [record-demos], [record-stack], or [record-tray].
     if: >-
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'workflow_dispatch' && inputs.record_demos) ||
-      (github.event_name == 'push' && (contains(github.event.head_commit.message, '[record-demos]') || contains(github.event.head_commit.message, '[record-stack]')))
+      (github.event_name == 'push' && (contains(github.event.head_commit.message, '[record-demos]') || contains(github.event.head_commit.message, '[record-stack]') || contains(github.event.head_commit.message, '[record-tray]')))
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
@@ -123,7 +124,7 @@ jobs:
             adb shell settings put global hide_error_dialogs 1
             adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS
             adb shell cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.threebutton
-            if [ "$STACK_ONLY" = "true" ]; then python3 scripts/record-demos.py stacked; else python3 scripts/record-demos.py; fi
+            if [ "$TRAY_ONLY" = "true" ]; then python3 scripts/record-demos.py tray; elif [ "$STACK_ONLY" = "true" ]; then python3 scripts/record-demos.py stacked; else python3 scripts/record-demos.py; fi
       - uses: actions/upload-artifact@v4
         if: success()
         with:
@@ -170,7 +171,7 @@ jobs:
           source = Path(os.environ["RECORDINGS"])
           destination = Path("docs/videos")
           expected = {f"{scenario}.{extension}"
-                      for scenario in ("detents", "chat", "contentFit", "stacked", "heavyContent", "scrollHandoff")
+                      for scenario in ("detents", "chat", "contentFit", "stacked", "heavyContent", "scrollHandoff", "tray")
                       for extension in ("gif", "mp4")}
           actual = {p.name for p in source.iterdir()}
           if actual != expected:

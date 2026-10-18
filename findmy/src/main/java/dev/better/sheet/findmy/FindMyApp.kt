@@ -85,6 +85,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.systemBars
 import dev.better.sheet.BetterModalSheet
+import dev.better.sheet.SheetPresentation
 import dev.better.sheet.BetterSheetHost
 import dev.better.sheet.SheetBehavior
 import dev.better.sheet.SheetBodyMode
@@ -377,6 +378,7 @@ private fun PeopleSheet(state: SheetState, front: Boolean, onSelect: (Friend) ->
     BetterSheetHost(
         state = state,
         snapPoints = PeopleDetents,
+        presentation = SheetPresentation.Tray(),
         modifier = modifier,
         behavior = SheetBehavior(
             keyboardBehavior = SheetKeyboardBehavior.Ignore,
@@ -549,6 +551,7 @@ private fun ChatSheet(onDismissed: () -> Unit) {
     BetterModalSheet(
         state = state,
         snapPoints = PeopleDetents,
+        presentation = SheetPresentation.Tray(),
         onDismissed = onDismissed,
         behavior = SheetBehavior(keyboardBehavior = SheetKeyboardBehavior.Expand),
         bodyMode = SheetBodyMode.Fill,
