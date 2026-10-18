@@ -31,9 +31,9 @@ class SheetUiTest {
         compose.waitForIdle()
     }
     @Test fun footerIsVisibleAtEveryDetent() {
-        open("Detents")
+        open("Snap Points")
         listOf("peek", "expanded", "medium").forEach { id ->
-            compose.onNodeWithTag("detent-$id").performClick()
+            compose.onNodeWithTag("snap-point-$id").performClick()
             compose.waitForIdle()
             compose.onNodeWithTag("footer").assertIsDisplayed()
             compose.onNodeWithTag("body-list").assertIsDisplayed()
@@ -48,7 +48,7 @@ class SheetUiTest {
         compose.waitForIdle()
         val afterBounds = compose.onNodeWithTag("fit-body").getUnclippedBoundsInRoot()
         val after = afterBounds.bottom - afterBounds.top
-        assertTrue("Content detent must grow", after > before)
+        assertTrue("Content snap point must grow", after > before)
         assertTrue("The visible sheet must grow, not only its content", compose.onNodeWithTag("sheet-header").getUnclippedBoundsInRoot().top < initialTop)
         compose.onNodeWithTag("footer").assertIsDisplayed()
     }
@@ -56,7 +56,7 @@ class SheetUiTest {
         open("Locked")
         UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).pressBack()
         compose.onNodeWithTag("footer").assertIsDisplayed()
-        compose.onNodeWithTag("detent-peek").performClick()
+        compose.onNodeWithTag("snap-point-peek").performClick()
         compose.onNodeWithTag("sheet-title").performTouchInput { swipeDown() }
         compose.waitForIdle()
         compose.onNodeWithTag("footer").assertIsDisplayed()
@@ -99,9 +99,9 @@ class SheetUiTest {
         compose.onNodeWithTag("composer").performTextInput("Hello Better")
         compose.waitForIdle()
         compose.waitUntil(20000) {
-            compose.onNodeWithTag("detent-expanded").fetchSemanticsNode().config[SemanticsProperties.Selected]
+            compose.onNodeWithTag("snap-point-expanded").fetchSemanticsNode().config[SemanticsProperties.Selected]
         }
-        compose.onNodeWithTag("detent-expanded").assertIsSelected()
+        compose.onNodeWithTag("snap-point-expanded").assertIsSelected()
         compose.onNodeWithTag("footer").assertIsDisplayed()
         val footerBottom = compose.onNodeWithTag("footer").fetchSemanticsNode().boundsInWindow.bottom
         assertTrue(footerBottom < device.displayHeight)
@@ -110,9 +110,9 @@ class SheetUiTest {
         device.pressBack()
         compose.waitForIdle()
         compose.waitUntil(20000) {
-            compose.onNodeWithTag("detent-medium").fetchSemanticsNode().config[SemanticsProperties.Selected]
+            compose.onNodeWithTag("snap-point-medium").fetchSemanticsNode().config[SemanticsProperties.Selected]
         }
-        compose.onNodeWithTag("detent-medium").assertIsSelected()
+        compose.onNodeWithTag("snap-point-medium").assertIsSelected()
     }
     @Test fun stackedSheetsDismissFromTheTop() {
         open("Stack")
@@ -137,13 +137,13 @@ class SheetUiTest {
         compose.onNodeWithTag("open-Stack").assertIsDisplayed()
     }
     @Test fun scrollingHandsOffToSheetAndCanDismiss() {
-        open("Detents")
+        open("Snap Points")
         compose.onNodeWithTag("body-list").performTouchInput { swipeUp() }
         compose.waitForIdle()
         compose.onNodeWithTag("footer").assertIsDisplayed()
         compose.onNodeWithTag("close").performClick()
         compose.waitForIdle()
-        compose.onNodeWithTag("open-Detents").assertIsDisplayed()
+        compose.onNodeWithTag("open-Snap Points").assertIsDisplayed()
     }
     @Test fun footerKeepsItsSpaceWhenTheHeaderIsTooTallForTheWindow() {
         compose.runOnUiThread {
