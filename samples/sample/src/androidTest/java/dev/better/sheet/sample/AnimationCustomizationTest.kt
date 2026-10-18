@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -34,8 +35,9 @@ class AnimationCustomizationTest {
         compose.runOnUiThread { compose.activity.setContent {
             state = rememberSheetState("half", initiallyVisible = false)
             scope = rememberCoroutineScope()
-            Box(Modifier.fillMaxSize().background(Color.White)) {
+            Box(Modifier.fillMaxSize().background(Color.White).testTag("fade-host")) {
                 BetterSheet(state, listOf(SheetSnapPoint.fraction("half", .5f), SheetSnapPoint.expanded()),
+                    containerColor = Color(0xFF0033FF),
                     enterTransition = fadeIn(tween(600)), exitTransition = fadeOut(tween(600)),
                     snapAnimationSpec = tween(1000), onDismissed = { dismissed++ },
                     header = { Spacer(Modifier.fillMaxWidth().height(48.dp).testTag("fade-header")) },
@@ -52,10 +54,16 @@ class AnimationCustomizationTest {
         compose.waitForIdle()
         val early = compose.onNodeWithTag("fade-header").getUnclippedBoundsInRoot().top
         assertTrue(state.isAnimationRunning)
+        fun sheetRed(): Float {
+            val pixels = compose.onNodeWithTag("fade-host").captureToImage().toPixelMap()
+            return pixels[pixels.width / 2, pixels.height * 3 / 4].red
+        }
+        val earlyRed = sheetRed()
         compose.mainClock.advanceTimeBy(800)
         compose.waitForIdle()
         val resting = compose.onNodeWithTag("fade-header").getUnclippedBoundsInRoot().top
         assertEquals("A fade must not slide or grow", resting.value, early.value, 1f)
+        assertTrue("The sheet actually fades from the white background into blue", earlyRed > sheetRed() + .1f)
         compose.runOnUiThread { scope.launch { state.snapTo("expanded") } }
         compose.mainClock.advanceTimeBy(400)
         compose.waitForIdle()

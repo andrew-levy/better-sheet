@@ -81,11 +81,11 @@ internal fun releasesBackgroundPointer(
 ): Boolean = targetHidden && !dragInProgress && visibleHeight <= slop
 
 /**
- * The modal can leave composition once it is visually gone. Waiting for the spring's
- * numerical tail keeps the last presentation "open", so the next tap is a no-op.
+ * Visibility and anchor completion must agree before notifying dismissal. The transition
+ * can finish a frame before hide() snaps the anchor; that frame is not a second dismissal.
  */
 internal fun SheetState.releaseDismissed(): Boolean = hasPresented && !modalAwaitingPresentation &&
-    targetSnapPoint == null && !isVisible && !isAnimationRunning && !dragInProgress
+    targetSnapPoint == null && currentSnapPoint == null && !isVisible && !isAnimationRunning && !dragInProgress
 
 /** 0 at hidden, 1 at the lowest detent, held at 1 above that. Ignored when [followsDrag] is false. */
 internal fun scrimDragFraction(visibleHeight: Float, smallestDetentHeight: Float, followsDrag: Boolean): Float {

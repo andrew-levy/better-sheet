@@ -71,7 +71,7 @@ class SheetMotionTest {
         compose.runOnUiThread { scope.launch { state.hide() } }
         compose.mainClock.advanceTimeBy(600)
         compose.waitForIdle()
-        assertFalse(state.isVisible)
+        assertFalse("Exit must finish: current=${state.currentSnapPoint}, target=${state.targetSnapPoint}, progress=${state.progress}, running=${state.isAnimationRunning}", state.isVisible)
         assertEquals(1, mounts)
         compose.mainClock.autoAdvance = true
     }

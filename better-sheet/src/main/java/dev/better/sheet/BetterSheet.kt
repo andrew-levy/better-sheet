@@ -120,7 +120,7 @@ public fun BetterModalSheet(
         }
         LaunchedEffect(state) {
             snapshotFlow {
-                state.hasPresented && !state.modalAwaitingPresentation && state.targetSnapPoint == null && !state.isVisible &&
+                state.hasPresented && !state.modalAwaitingPresentation && state.targetSnapPoint == null && state.currentSnapPoint == null && !state.isVisible &&
                     !state.isAnimationRunning && !state.dragInProgress
             }.first { it }
             state.finishModalPresentation()

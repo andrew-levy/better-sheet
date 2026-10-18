@@ -10,6 +10,7 @@ import androidx.compose.foundation.gestures.DraggableAnchors
 import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.gestures.snapTo
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -31,7 +32,8 @@ public class SheetState internal constructor(
     internal var snapAnimationSpec: AnimationSpec<Float> by mutableStateOf(animationSpec)
     internal var visibility by mutableStateOf(MutableTransitionState(EnterExitState.PreEnter))
         private set
-    internal var presentationFraction by mutableFloatStateOf(0f)
+    internal var presentationProgress: State<Float> by mutableStateOf(mutableFloatStateOf(0f))
+    internal val presentationFraction: Float get() = presentationProgress.value.coerceIn(0f, 1f)
     internal var transitionsManaged = false
     private val operations = MutatorMutex()
     internal val presentationActive: Boolean get() = visibility.currentState == EnterExitState.Visible ||
@@ -150,7 +152,7 @@ public class SheetState internal constructor(
             (anchored.settledValue == HiddenId && !anchored.isAnimationRunning))
         if (entering && visibility.currentState == EnterExitState.Visible) {
             visibility = MutableTransitionState(EnterExitState.PreEnter)
-            presentationFraction = 0f
+            presentationProgress = mutableFloatStateOf(0f)
         }
         clearRubber()
         programmaticHide = false
@@ -163,7 +165,7 @@ public class SheetState internal constructor(
         if (transitionsManaged) {
             if (immediate) {
                 visibility = MutableTransitionState(EnterExitState.Visible)
-                presentationFraction = 1f
+                presentationProgress = mutableFloatStateOf(1f)
             } else {
                 visibility.targetState = EnterExitState.Visible
             }
