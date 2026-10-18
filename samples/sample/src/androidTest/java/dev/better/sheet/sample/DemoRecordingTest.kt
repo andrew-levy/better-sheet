@@ -80,7 +80,7 @@ class DemoRecordingTest {
     }
 
     @Test fun snapPoints() {
-        open("Snap Points")
+        open("SnapPoints")
         listOf("peek", "expanded", "medium").forEach { compose.onNodeWithTag("snap-point-$it").performClick(); pause() }
         compose.onNodeWithTag("body-list").performTouchInput { swipeUp() }; pause()
         compose.onNodeWithTag("close").performClick(); pause()
