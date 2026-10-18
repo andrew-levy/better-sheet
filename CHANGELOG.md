@@ -1,10 +1,26 @@
 # Changelog
 
-All notable changes to Atlas Sheet are documented here. The project follows
+All notable changes to Better Sheet are documented here. The project follows
 [Semantic Versioning](https://semver.org); while the version is 0.x, minor releases may change
 public API.
 
 ## [Unreleased]
+
+## [0.4.0] - Unreleased
+
+### Breaking API changes
+
+- Rename the library to Better Sheet, with `BetterSheet`, `BetterModalSheet`, and
+  `BetterSheetHost` as its rendering APIs.
+- Move all library imports to `dev.better.sheet` and the Gradle module to `:better-sheet`.
+- Use `com.github.andrew-levy:better-sheet:0.4.0` for JitPack installations.
+- Keep `SheetState`, `rememberSheetState()`, snap points, behavior, and stack APIs unchanged.
+  No compatibility aliases are provided; update imports and rendering function names together.
+
+### Changed
+
+- Update the sample apps, recording tools, documentation, and publication metadata for Better Sheet.
+- Preserve existing tags and releases; new release tags continue to use unprefixed versions.
 
 ## [0.3.0] - 2026-10-17
 
@@ -15,7 +31,7 @@ public API.
 - Rename `initialDetent`, `currentDetent`, and `targetDetent` to `initialSnapPoint`,
   `currentSnapPoint`, and `targetSnapPoint`; method argument `detent` becomes `snapPoint`.
 - Rename `SheetImePolicy` / `imePolicy` to `SheetKeyboardBehavior` / `keyboardBehavior`.
-- Rename `AtlasModalSheet.onDismissRequest` to `onDismissed`; it runs after dismissal completes.
+- Rename `BetterModalSheet.onDismissRequest` to `onDismissed`; it runs after dismissal completes.
 - Stack APIs use `SheetStackEntry`, `SheetStackEffectScope`, `LocalSheetStackEntry`,
   `Modifier.sheetStackEffect`, and the `stackState` parameter.
 - Remove the obsolete `expandBeforeScroll` parameter. Content owns gestures that begin
@@ -68,10 +84,10 @@ Initial public release.
 
 ### Added
 
-- `AtlasModalSheet`: a modal sheet in its own Dialog window with focus and input isolation, a
+- `BetterModalSheet`: a modal sheet in its own Dialog window with focus and input isolation, a
   Compose-drawn scrim, Back, scrim and drag dismissal policies, and accessibility actions.
-- `AtlasSheetHost`: an inline overlay host for persistent panels over interactive content.
-- `AtlasSheet`: an always-mounted, in-place root sheet for Activities and ComposeView Fragments,
+- `BetterSheetHost`: an inline overlay host for persistent panels over interactive content.
+- `BetterSheet`: an always-mounted, in-place root sheet for Activities and ComposeView Fragments,
   with `show()`/`hide()` and an `onDismissed` callback after the exit animation.
 - Named detents: fixed, fraction, content (natural size), expanded and custom.
 - `SheetState` with `animateTo`, `snapTo`, `show`, `hide`, `expand` and `collapse`, saveable
@@ -89,6 +105,9 @@ Initial public release.
 - Accessibility, configuration changes, OEM keyboards and real-device performance need broader
   coverage before production rollout at scale.
 
-[0.3.0]: https://github.com/andrew-levy/atlas-sheet/releases/tag/0.3.0
-[0.2.0]: https://github.com/andrew-levy/atlas-sheet/releases/tag/v0.2.0
-[0.1.0]: https://github.com/andrew-levy/atlas-sheet/releases/tag/v0.1.0
+[0.3.0]: https://github.com/andrew-levy/better-sheet/releases/tag/0.3.0
+[0.2.0]: https://github.com/andrew-levy/better-sheet/releases/tag/v0.2.0
+[0.1.0]: https://github.com/andrew-levy/better-sheet/releases/tag/v0.1.0
+
+
+[0.4.0]: https://github.com/andrew-levy/better-sheet/releases/tag/0.4.0

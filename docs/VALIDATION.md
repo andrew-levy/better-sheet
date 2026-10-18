@@ -4,7 +4,7 @@
 
 `SheetUiTest`, `SheetMotionTest`, `FragmentSheetTest` and `HeavyContentMotionTest` (11 tests)
 passed on both API 24 and API 35 x86_64 Pixel 4 emulators with system animations enabled:
-[run 38399272177](https://github.com/andrew-levy/atlas-sheet/actions/runs/38399272177).
+[run 38399272177](https://github.com/andrew-levy/better-sheet/actions/runs/38399272177).
 They cover intermediate entry/exit/resize frames, interrupted entry, mounted-body retention across
 hide/show, keyboard expansion and restoration, a real Fragment ComposeView being disposed after an
 animated exit, and opening timing under heavy background load.
@@ -46,8 +46,8 @@ Representative frames were reviewed for opening, detent, resize, keyboard and cl
 The Heavy demo decodes 3,000 messages with SHA-256 rounds on every core while a simulated
 900 ms database read is pending. `HeavyContentMotionTest` opens it on the real device frame
 clock (no Compose test clock), five times each, and compares it with the plain chat. Medians from
-[run 38394688976](https://github.com/andrew-levy/atlas-sheet/actions/runs/38394688976) and
-[run 38394694275](https://github.com/andrew-levy/atlas-sheet/actions/runs/38394694275):
+[run 38394688976](https://github.com/andrew-levy/better-sheet/actions/runs/38394688976) and
+[run 38394694275](https://github.com/andrew-levy/better-sheet/actions/runs/38394694275):
 
 | Emulator | Scenario | Time until the sheet starts moving | Time spent moving | Longest frame |
 | --- | --- | --- | --- | --- |

@@ -1,8 +1,8 @@
-# Atlas Sheet
+# Better Sheet
 
 Bottom sheets for Jetpack Compose, with named snap points, a sticky header and footer, and scrolling that stays under your control.
 
-Bring your own theme and content. Atlas is built on Compose Foundation, not Material. A modal sheet isolates focus in its own window. An inline sheet can sit over a screen the user can still touch.
+Bring your own theme and content. Better is built on Compose Foundation, not Material. A modal sheet isolates focus in its own window. An inline sheet can sit over a screen the user can still touch.
 
 Requires Android 24+ and Jetpack Compose.
 
@@ -18,11 +18,11 @@ dependencyResolutionManagement {
 
 // app/build.gradle.kts
 dependencies {
-    implementation("com.github.andrew-levy:atlas-sheet:0.3.0")
+    implementation("com.github.andrew-levy:better-sheet:0.4.0")
 }
 ```
 
-To try a local build instead, run `./gradlew :atlas-sheet:publishToMavenLocal` and depend on `io.github.andrew-levy:atlas-sheet:0.3.0` with `mavenLocal()`.
+To try a local build instead, run `./gradlew :better-sheet:publishToMavenLocal` and depend on `io.github.andrew-levy:better-sheet:0.4.0` with `mavenLocal()`.
 
 The examples below use the `0.3.0` API. See the [changelog](CHANGELOG.md) for migration
 from `0.2.0`. App-specific content functions are placeholders.
@@ -31,11 +31,11 @@ from `0.2.0`. App-specific content functions are placeholders.
 
 | Composable | How it works |
 | --- | --- |
-| `AtlasModalSheet` | Opens above your screen in a separate dialog window. Blocks interaction with the screen behind it. |
-| `AtlasSheet` | Renders inside your existing layout. Use it when the sheet should share the screen with other interactive content. |
+| `BetterModalSheet` | Opens above your screen in a separate dialog window. Blocks interaction with the screen behind it. |
+| `BetterSheet` | Renders inside your existing layout. Use it when the sheet should share the screen with other interactive content. |
 
 Both are Compose components with the same state controls, snap points, and content slots.
-Start with `AtlasModalSheet` for a modal flow; choose `AtlasSheet` for an embedded panel.
+Start with `BetterModalSheet` for a modal flow; choose `BetterSheet` for an embedded panel.
 
 ### Background interaction
 
@@ -43,7 +43,7 @@ Start with `AtlasModalSheet` for a modal flow; choose `AtlasSheet` for an embedd
 `scrimColor` controls appearance only; a transparent enabled scrim still catches touches.
 
 ```kotlin
-AtlasSheet(
+BetterSheet(
     state = state,
     snapPoints = snapPoints,
     scrimColor = Color.Black.copy(alpha = 0.42f), // Used only when enabled.
@@ -60,18 +60,18 @@ AtlasSheet(
 | `scrimEnabled = false` | No scrim or dimming; touches reach the background of an inline sheet |
 
 `Color.Transparent` and `Color.Unspecified` both draw no dimming and never change touch
-behavior. `AtlasModalSheet` always blocks background interaction through its window.
+behavior. `BetterModalSheet` always blocks background interaction through its window.
 With its scrim disabled, outside taps do not dismiss it. Back and `state.hide()` still
-work according to their own settings. Use `AtlasSheet` for touch-through.
+work according to their own settings. Use `BetterSheet` for touch-through.
 
 ### Fragment support
 
 Neither component requires a Fragment. If your app uses Fragments, put either component
-inside a `ComposeView`. Use `AtlasSheet` to render in the Fragment's view, or
-`AtlasModalSheet` to open a dialog above it. Call `state.hide()` to close the sheet,
+inside a `ComposeView`. Use `BetterSheet` to render in the Fragment's view, or
+`BetterModalSheet` to open a dialog above it. Call `state.hide()` to close the sheet,
 then remove or pop the Fragment in `onDismissed`.
 
-## AtlasModalSheet: a modal above your screen
+## BetterModalSheet: a modal above your screen
 
 ![Modal sheet opening, resizing between snap points, and closing](docs/videos/detents.gif)
 
@@ -87,7 +87,7 @@ val scope = rememberCoroutineScope()
 
 Button(onClick = { scope.launch { state.show() } }) { Text("Open order") }
 
-AtlasModalSheet(
+BetterModalSheet(
     state = state,
     snapPoints = listOf(
         SheetSnapPoint.fixed("peek", 260.dp),
@@ -103,7 +103,7 @@ AtlasModalSheet(
 }
 ```
 
-Keep `AtlasModalSheet` mounted and control visibility with `state.show()` / `state.hide()`. Its dialog is removed after dismissal. `onDismissed` is optional; callers may still remove the composable in that callback.
+Keep `BetterModalSheet` mounted and control visibility with `state.show()` / `state.hide()`. Its dialog is removed after dismissal. `onDismissed` is optional; callers may still remove the composable in that callback.
 
 ```kotlin
 scope.launch { state.animateTo("peek") }
@@ -140,12 +140,12 @@ SheetBehavior(bubbleAtTop = true, bubbleAtBottom = false)
 
 `bubbleAtTop` allows a new downward drag at the physical top to collapse or dismiss the sheet. `bubbleAtBottom` allows a new upward drag at the physical bottom to expand it. Both default to `true`; either or both can be disabled. Physical edges are independent of message order or reverse layout. Dragging the handle still moves the sheet directly.
 
-Keep a chat list top-aligned. `reverseLayout = true` pins messages to the bottom, so growing the sheet moves the top edge and leaves the bubbles in place. Put the composer in `footer`, not in the list. Atlas does not scroll to new messages for you.
+Keep a chat list top-aligned. `reverseLayout = true` pins messages to the bottom, so growing the sheet moves the top edge and leaves the bubbles in place. Put the composer in `footer`, not in the list. Better does not scroll to new messages for you.
 
 Lazy content cannot use `fitContent()`, because items that are not composed have no height. Use `SheetBodyMode.Fill` and fixed, fractional, or custom snap points:
 
 ```kotlin
-AtlasModalSheet(
+BetterModalSheet(
     state = state,
     snapPoints = snapPoints,
     bodyMode = SheetBodyMode.Fill,
@@ -178,7 +178,7 @@ SheetBehavior(scrimFollowsDrag = false)
 
 ![Chat with a sticky composer and keyboard-aware sheet expansion](docs/videos/chat.gif)
 
-Do not add `imePadding()` around the sheet. Atlas already keeps the sheet above the keyboard.
+Do not add `imePadding()` around the sheet. Better already keeps the sheet above the keyboard.
 
 | `keyboardBehavior` | What happens |
 | --- | --- |
@@ -205,12 +205,12 @@ enableEdgeToEdge(
 
 The dimming covers the status bar and navigation bar, so the sheet and the screen read as one surface. The sheet's own color continues behind the navigation buttons. Content stays in the safe area.
 
-## AtlasSheet: a sheet inside your layout
+## BetterSheet: a sheet inside your layout
 
-Use `AtlasSheet` in a full-size `Box` alongside your Compose screen. It fills its parent,
+Use `BetterSheet` in a full-size `Box` alongside your Compose screen. It fills its parent,
 opens on mount by default, and animates closed when you call `hide()`. Set
 `behavior = SheetBehavior(scrimEnabled = false)` to keep the background interactive outside the sheet.
-An inline sheet does not provide the separate-window focus isolation of `AtlasModalSheet`.
+An inline sheet does not provide the separate-window focus isolation of `BetterModalSheet`.
 
 ![Shared sheet resizing and scrolling behavior, shown in the modal demo](docs/videos/heavyContent.gif)
 
@@ -223,7 +223,7 @@ val scope = rememberCoroutineScope()
 
 Box(Modifier.fillMaxSize()) {
     MapScreen()
-    AtlasSheet(
+    BetterSheet(
         state = state,
         snapPoints = listOf(
             SheetSnapPoint.fixed("peek", 220.dp),
@@ -245,13 +245,13 @@ To open it later, use `rememberSheetState(initiallyVisible = false)` and call `s
 Keep the sheet mounted to reopen it. If your navigation owns removal, perform that in
 `onDismissed` after closing. Removing the composable immediately skips its exit animation.
 
-### Using AtlasSheet as a Fragment root
+### Using BetterSheet as a Fragment root
 
-This example uses `AtlasSheet` because it renders within the Fragment's own view. A
-Fragment can also host `AtlasModalSheet` when modal window behavior is desired; its
+This example uses `BetterSheet` because it renders within the Fragment's own view. A
+Fragment can also host `BetterModalSheet` when modal window behavior is desired; its
 `onDismissed` callback can remove or pop the Fragment in the same way.
 
-Use `AtlasSheet` inside a `ComposeView`. Tie the composition to the Fragment's
+Use `BetterSheet` inside a `ComposeView`. Tie the composition to the Fragment's
 view lifecycle, and have the close button call `hide()` before removing the Fragment:
 
 ```kotlin
@@ -269,7 +269,7 @@ class OrderSheetFragment : Fragment() {
         setContent {
             val state = rememberSheetState(initialSnapPoint = "medium")
             val scope = rememberCoroutineScope()
-            AtlasSheet(
+            BetterSheet(
                 state = state,
                 snapPoints = listOf(
                     SheetSnapPoint.fraction("medium", 0.6f),
@@ -294,9 +294,9 @@ class OrderSheetFragment : Fragment() {
 Mount the Fragment in a full-window container so the scrim can cover the background. For
 back-stack navigation, replace the removal callback with your navigation's pop operation.
 The sheet handles Back while visible. Avoid a second Fragment slide transition on the same view.
-See the runnable [Fragment sample](sample/src/main/java/dev/atlas/sheet/sample/FragmentDemoActivity.kt).
+See the runnable [Fragment sample](sample/src/main/java/dev/better/sheet/sample/FragmentDemoActivity.kt).
 
-`AtlasSheetHost` remains a lower-level public rendering API. Prefer `AtlasSheet` for inline
+`BetterSheetHost` remains a lower-level public rendering API. Prefer `BetterSheet` for inline
 usage with managed entry/exit and `onDismissed`.
 
 ## Stack sheets
@@ -320,14 +320,14 @@ val recede = Modifier.sheetStackEffect { entry ->
     cornerRadius = (28 + 8 * depth).dp
 }
 
-AtlasModalSheet(
+BetterModalSheet(
     state = friends, stackState = stackState,
     snapPoints = listOf(SheetSnapPoint.expanded()),
     surfaceModifier = recede,
 ) {
     Button(onClick = { scope.launch { profile.show() } }) { Text("Open profile") }
 }
-AtlasModalSheet(
+BetterModalSheet(
     state = profile, stackState = stackState,
     snapPoints = listOf(SheetSnapPoint.fraction("expanded", 0.6f)),
     surfaceModifier = recede,
@@ -368,7 +368,7 @@ The **Stacked sheets** sample uses three always-mounted modals with cumulative r
 
 ## Common parameters
 
-These parameters are shared by `AtlasModalSheet` and `AtlasSheet`, except `stackState`.
+These parameters are shared by `BetterModalSheet` and `BetterSheet`, except `stackState`.
 
 | Parameter | Default | When to change it |
 | --- | --- | --- |
@@ -389,14 +389,14 @@ These parameters are shared by `AtlasModalSheet` and `AtlasSheet`, except `stack
 | `stackState` | `null` (modal only) | Coordinate multiple modal sheets |
 
 Removing a modal's scrim does not make its separate window behave like an inline sheet.
-Choose `AtlasSheet` when you need interaction with the screen behind it.
+Choose `BetterSheet` when you need interaction with the screen behind it.
 
 ### Sticky header and footer
 
 ![Chat body scrolls above a sticky composer](docs/videos/chat.gif)
 
 ```kotlin
-AtlasModalSheet(
+BetterModalSheet(
     state = state,
     snapPoints = listOf(SheetSnapPoint.expanded()),
     bodyMode = SheetBodyMode.Fill,
@@ -451,7 +451,7 @@ bounds without engaging the header's rubber-band effect.
 Open the project in Android Studio and run `sample` on Android 24+, with JDK 17 and Android SDK 35.
 
 ```bash
-./gradlew :sample:assembleDebug :atlas-sheet:testDebugUnitTest
+./gradlew :sample:assembleDebug :better-sheet:testDebugUnitTest
 ```
 
 ## License

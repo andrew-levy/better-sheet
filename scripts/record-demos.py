@@ -12,7 +12,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 SCENARIOS = ['detents', 'chat', 'contentFit', 'stacked', 'heavyContent', 'scrollHandoff']
-PACKAGE = 'dev.atlas.sheet.sample'
+PACKAGE = 'dev.better.sheet.sample'
 FRAMES = f'/sdcard/Android/data/{PACKAGE}/files/demo-frames'
 FRAME_MILLIS = 32  # DemoRecordingTest.FRAME_MILLIS
 SCENARIO_TIMEOUT = 900  # seconds
