@@ -71,7 +71,7 @@ object OpenTimings {
 }
 
 enum class Demo(val label: String, val subtitle: String) {
-    Snap Points("Snap Points", "Peek, medium, expanded • scroll handoff"),
+    SnapPoints("Snap Points", "Peek, medium, expanded • scroll handoff"),
     Tray("Floating tray", "Inset corners • continuous edge-to-edge morph"),
     Chat("Chat", "Lazy list • composer above keyboard"),
     Fit("Content fit", "Intrinsic size • live content changes"),
@@ -184,7 +184,7 @@ private fun DemoSheet(demo: Demo, openedAt: Long, close: () -> Unit) {
             if (demo != Demo.Fit) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("peek", "medium", "expanded").forEach { id ->
-                        FilterChip(selected = state.currentSnapPoint == id, onClick = { scope.launch { state.animateTo(id) } }, label = { Text(id.replaceFirstChar { it.uppercase() }) }, modifier = Modifier.testTag("snap point-$id"))
+                        FilterChip(selected = state.currentSnapPoint == id, onClick = { scope.launch { state.animateTo(id) } }, label = { Text(id.replaceFirstChar { it.uppercase() }) }, modifier = Modifier.testTag("snap-point-$id"))
                     }
                 }
             }
