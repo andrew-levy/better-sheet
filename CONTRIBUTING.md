@@ -16,7 +16,7 @@ Include the device/API/IME used and explain the reproduction scenario. When chan
 update README examples and architecture notes. Keep release artifacts and videos reproducible;
 do not check build caches or credentials into the repository.
 
-Demo recordings live in `docs/videos/` and are not shown in the README. To recreate them, start
+The README displays the recordings committed in `docs/videos/`. To recreate them, start
 an emulator with `adb` and `ffmpeg` on `PATH`, then run:
 
 ```bash
@@ -25,9 +25,14 @@ python3 scripts/record-demos.py chat
 ```
 
 The script builds and installs the sample and its test APK, runs one recording test per scenario,
-and assembles per-frame screenshots into a 30 fps MP4 and a GIF. Recording tests are excluded
-from normal CI. Run the Android workflow manually with `record_demos`, or push a commit whose
-message contains `[record-demos]`.
+and assembles per-frame screenshots into a 30 fps MP4 and a GIF. Every push to `main` records all scenarios. Once the build, lint, unit tests, API 24/35 device
+tests, and recording job pass, CI commits the generated GIFs and MP4s to `docs/videos/`.
+The README updates automatically. Video-only commits do not start another recording run.
+Stale runs cannot overwrite newer source commits.
+
+On feature branches, push a commit containing `[record-demos]` to generate a downloadable
+`demo-videos` artifact. To publish manually, run the Android workflow on `main` with
+`record_demos` enabled; validation still runs before publication.
 
 ## Releasing
 
@@ -40,6 +45,10 @@ Keep existing published tags intact; do not move or delete them to fix publicati
 2. Merge to `main`, then tag and push: `git tag X.Y.Z && git push origin X.Y.Z`.
    Alternatively, run the **Release** workflow from `main` with `version = X.Y.Z`.
    The manual workflow validates and packages the commit before creating the unprefixed tag.
+   To refresh recordings before releasing, include `[release]` in a commit pushed to `main`.
+   After Android validation and automatic video publication succeed, CI starts the Release
+   workflow with the version from `gradle.properties`. No release starts if validation,
+   recording, or video publication fails.
 3. The Release workflow checks that the tag matches `VERSION_NAME`, runs unit tests and lint, and
    creates a GitHub release with the changelog section and artifacts. JitPack builds the tag on
    first request. The workflow requests and verifies the JitPack POM and AAR; a failed or

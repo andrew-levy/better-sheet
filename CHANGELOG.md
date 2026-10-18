@@ -6,7 +6,7 @@ public API.
 
 ## [Unreleased]
 
-## [0.4.0] - Unreleased
+## [0.4.0] - 2026-10-18
 
 ### Breaking API changes
 
@@ -21,6 +21,8 @@ public API.
 
 - Update the sample apps, recording tools, documentation, and publication metadata for Better Sheet.
 - Preserve existing tags and releases; new release tags continue to use unprefixed versions.
+- Record and commit README videos automatically on main after Android validation passes.
+  Successful `[release]` runs refresh videos before starting the Release workflow.
 
 ## [0.3.0] - 2026-10-17
 

@@ -1,11 +1,13 @@
 name: Android
 on:
   push:
+    paths-ignore:
+      - 'docs/videos/**'
   pull_request:
   workflow_dispatch:
     inputs:
       record_demos:
-        description: Record the demo videos instead of running validation
+        description: Record and publish demo videos after validation
         type: boolean
         default: false
 permissions:
@@ -15,7 +17,6 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
-    if: github.event_name != 'workflow_dispatch' || !inputs.record_demos
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,7 +35,6 @@ jobs:
             **/build/reports/
             sample/build/outputs/apk/
   device:
-    if: github.event_name != 'workflow_dispatch' || !inputs.record_demos
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
@@ -83,9 +83,10 @@ jobs:
           path: sample/build/reports/androidTests/
   demos:
     env:
-      STACK_ONLY: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[record-stack]') }}
-    # Also runs for a pushed commit whose message contains [record-demos].
+      STACK_ONLY: ${{ github.ref != 'refs/heads/main' && github.event_name == 'push' && contains(github.event.head_commit.message, '[record-stack]') }}
+    # Main always records; feature branches can opt in with [record-demos] or [record-stack].
     if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'workflow_dispatch' && inputs.record_demos) ||
       (github.event_name == 'push' && (contains(github.event.head_commit.message, '[record-demos]') || contains(github.event.head_commit.message, '[record-stack]')))
     runs-on: ubuntu-latest
@@ -128,3 +129,86 @@ jobs:
         with:
           name: demo-videos
           path: docs/videos/
+
+  publish-demos:
+    # Artifacts only become README assets after every validation job succeeds.
+    needs: [build, device, demos]
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Reject stale recordings
+        id: current
+        env:
+          RECORDED_SHA: ${{ github.sha }}
+        run: |
+          if [ "$(git rev-parse HEAD)" != "$RECORDED_SHA" ]; then
+            echo "::notice::Main moved while recording; a newer run will publish its demos."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/download-artifact@v4
+        if: steps.current.outputs.publish == 'true'
+        with:
+          name: demo-videos
+          path: ${{ runner.temp }}/demo-videos
+      - name: Commit the recorded README assets
+        if: steps.current.outputs.publish == 'true'
+        env:
+          RECORDINGS: ${{ runner.temp }}/demo-videos
+        run: |
+          python3 - <<'PY'
+          import os
+          import shutil
+          from pathlib import Path
+          source = Path(os.environ["RECORDINGS"])
+          destination = Path("docs/videos")
+          expected = {f"{scenario}.{extension}"
+                      for scenario in ("detents", "chat", "contentFit", "stacked", "heavyContent", "scrollHandoff")
+                      for extension in ("gif", "mp4")}
+          actual = {p.name for p in source.iterdir()}
+          if actual != expected:
+              raise SystemExit(f"Unexpected demo files: missing={expected - actual}, extra={actual - expected}")
+          for name in sorted(expected):
+              asset = source / name
+              if asset.is_symlink() or not asset.is_file() or asset.stat().st_size == 0:
+                  raise SystemExit(f"Invalid recording: {name}")
+              shutil.copyfile(asset, destination / name)
+          PY
+          git add -- docs/videos/
+          if git diff --cached --quiet; then
+            echo "Recordings already match the README assets."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "Refresh demo videos after Android validation [skip ci]"
+            # A racing source push is rejected rather than overwritten.
+            git push origin HEAD:main
+          fi
+      - name: Start the requested release
+        if: steps.current.outputs.publish == 'true' && github.event_name == 'push' && contains(github.event.head_commit.message, '[release]')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const properties = fs.readFileSync('gradle.properties', 'utf8');
+            const version = properties.match(/^VERSION_NAME=(\S+)$/m)?.[1];
+            if (!version || !/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(version)) {
+              throw new Error('VERSION_NAME must be an unprefixed semantic version');
+            }
+            const { data: current } = await github.rest.repos.getCommit({
+              ...context.repo, ref: 'main'
+            });
+            const { execSync } = require('child_process');
+            if (current.sha !== execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim()) {
+              throw new Error('Main moved after demo publication; release was not started');
+            }
+            await github.rest.actions.createWorkflowDispatch({
+              ...context.repo, workflow_id: 'release.yml', ref: 'main', inputs: { version }
+            });
