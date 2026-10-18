@@ -303,7 +303,7 @@ public fun BetterSheetHost(
         val morph by remember(state, tray, availablePx) {
             derivedStateOf {
                 if (tray == null) 0f else trayMorphFraction(
-                    availablePx - state.offsetOrHidden(), availablePx, tray.morphStartFraction,
+                    availablePx - state.layoutOffset(), availablePx, tray.morphStartFraction,
                 )
             }
         }
@@ -325,7 +325,7 @@ public fun BetterSheetHost(
         Box(Modifier.align(Alignment.BottomCenter).then(with(visibilityScope) {
             Modifier.animateEnterExit(enterTransition, exitTransition, "Sheet presentation")
         }).sheetPresentationPlacement(state)) {
-            if (tray == null && isVisible && navInset > 0 && !keyboardCoversNav) {
+            if (tray == null && (isVisible || state.presentationExiting) && navInset > 0 && !keyboardCoversNav) {
                 // The sheet sits on the bottom edge. Continue its color under the navigation
                 // bar so the bar does not pick up a separate, darker system scrim.
                 Box(Modifier.align(Alignment.BottomCenter)
@@ -407,7 +407,7 @@ public fun BetterSheetHost(
                 }
             }) { measurables, constraints ->
                 // Offset reads happen in measurement, not composition, on each drag/animation frame.
-                val visibleHeight = (availablePx - state.offsetOrHidden()).coerceIn(0f, availablePx)
+                val visibleHeight = (availablePx - state.layoutOffset()).coerceIn(0f, availablePx)
                 val stretch = upwardStretch(state.rubberTranslation)
                 val base = if (chrome == 0) availablePx else visibleHeight.coerceAtLeast(chrome.toFloat().coerceAtMost(availablePx))
                 // Compensate the external gap/extension so the top edge stays on its detent.

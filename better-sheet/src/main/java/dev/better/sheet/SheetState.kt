@@ -100,6 +100,12 @@ public class SheetState internal constructor(
 
     internal fun offsetOrHidden(): Float = anchored.offset.takeIf { it.isFinite() } ?: (geometry?.availableHeight ?: 0f)
 
+    // Keep the transition's measured size after exit. Collapsing it when the hidden anchor
+    // settles would retarget slideOut's distance and restart an already completed animation.
+    internal fun layoutOffset(): Float = if (presentationExiting && anchored.settledValue == HiddenId) {
+        geometry?.offsets?.get(lastVisibleSnapPoint) ?: offsetOrHidden()
+    } else offsetOrHidden()
+
     internal fun updateGeometry(next: SheetGeometry, dismissOnDrag: Boolean, layoutReady: Boolean = true) {
         measurementsReady = layoutReady
         val firstGeometry = geometry == null
