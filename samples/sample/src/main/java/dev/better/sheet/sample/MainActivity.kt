@@ -100,7 +100,7 @@ private fun Gallery(autoOpen: Demo?) {
                 Spacer(Modifier.height(14.dp))
                 Text("A sheet for\nevery surface.", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold, color = Ink)
                 Spacer(Modifier.height(12.dp))
-                Text("Named snapPoints. Sticky chrome.\nContent that stays in your control.", color = Color(0xFF68728A))
+                Text("Named snap points. Sticky chrome.\nContent that stays in your control.", color = Color(0xFF68728A))
                 Spacer(Modifier.height(14.dp))
             }
             items(Demo.entries) { demo ->
