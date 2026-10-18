@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Unprefixed version matching VERSION_NAME (for example 0.3.0)
+        description: Unprefixed version matching VERSION_NAME (for example 0.4.0)
         required: true
         type: string
 permissions:
@@ -33,6 +33,10 @@ jobs:
       - run: chmod +x gradlew
       - name: Check the tag matches VERSION_NAME
         run: |
+          if [ "$GITHUB_REPOSITORY" != "andrew-levy/better-sheet" ]; then
+            echo "::error::Rename the repository to andrew-levy/better-sheet before publishing Better Sheet"
+            exit 1
+          fi
           version=$(sed -n 's/^VERSION_NAME=//p' gradle.properties)
           echo "VERSION=$version" >> "$GITHUB_ENV"
           if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] && [ "$GITHUB_REF" != refs/heads/main ]; then
@@ -44,7 +48,7 @@ jobs:
             exit 1
           fi
       - name: Test, lint and package
-        run: ./gradlew :atlas-sheet:testDebugUnitTest :atlas-sheet:lintRelease :atlas-sheet:publishToMavenLocal
+        run: ./gradlew :better-sheet:testDebugUnitTest :better-sheet:lintRelease :better-sheet:publishToMavenLocal
       - name: Create the tag for a manual release
         if: github.event_name == 'workflow_dispatch'
         env:
@@ -54,7 +58,7 @@ jobs:
       - name: Publish to Maven Central
         if: env.ORG_GRADLE_PROJECT_mavenCentralUsername != '' && env.ORG_GRADLE_PROJECT_signingInMemoryKey != ''
         # Uploads a deployment; it is released from the Central Portal (automaticRelease = false).
-        run: ./gradlew :atlas-sheet:publishToMavenCentral --no-configuration-cache
+        run: ./gradlew :better-sheet:publishToMavenCentral --no-configuration-cache
       - name: Note skipped Maven Central publication
         if: env.ORG_GRADLE_PROJECT_mavenCentralUsername == '' || env.ORG_GRADLE_PROJECT_signingInMemoryKey == ''
         run: echo "::warning::Maven Central secrets are not configured; Maven Central publication skipped; JitPack availability is checked separately."
@@ -69,17 +73,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          dir="$HOME/.m2/repository/$(sed -n 's/^GROUP=//p' gradle.properties | tr . /)/atlas-sheet/$VERSION"
+          dir="$HOME/.m2/repository/$(sed -n 's/^GROUP=//p' gradle.properties | tr . /)/better-sheet/$VERSION"
           gh release create "$RELEASE_TAG" --verify-tag --title "$VERSION" --notes-file release-notes.md \
-            "$dir"/atlas-sheet-"$VERSION".aar "$dir"/atlas-sheet-"$VERSION".pom \
-            "$dir"/atlas-sheet-"$VERSION"-sources.jar "$dir"/atlas-sheet-"$VERSION"-javadoc.jar
+            "$dir"/better-sheet-"$VERSION".aar "$dir"/better-sheet-"$VERSION".pom \
+            "$dir"/better-sheet-"$VERSION"-sources.jar "$dir"/better-sheet-"$VERSION"-javadoc.jar
       - name: Verify JitPack publication
         timeout-minutes: 12
         run: |
-          base="https://jitpack.io/com/github/andrew-levy/atlas-sheet/$VERSION/atlas-sheet-$VERSION"
+          base="https://jitpack.io/com/github/andrew-levy/better-sheet/$VERSION/better-sheet-$VERSION"
           for extension in pom aar; do
             curl --fail --show-error --location --retry 4 --retry-all-errors --retry-delay 10 \
-              --retry-max-time 300 --max-time 120 "$base.$extension" -o "$RUNNER_TEMP/atlas-sheet.$extension"
+              --retry-max-time 300 --max-time 120 "$base.$extension" -o "$RUNNER_TEMP/better-sheet.$extension"
           done
           python3 - <<'PY'
           import os
@@ -88,16 +92,16 @@ jobs:
           from pathlib import Path
           directory = Path(os.environ["RUNNER_TEMP"])
           namespace = {"m": "http://maven.apache.org/POM/4.0.0"}
-          pom = ET.parse(directory / "atlas-sheet.pom").getroot()
+          pom = ET.parse(directory / "better-sheet.pom").getroot()
           for field, expected in {
               "groupId": "com.github.andrew-levy",
-              "artifactId": "atlas-sheet",
+              "artifactId": "better-sheet",
               "version": os.environ["VERSION"],
               "packaging": "aar",
           }.items():
               if pom.findtext(f"m:{field}", namespaces=namespace) != expected:
                   raise SystemExit(f"Unexpected JitPack POM {field}")
-          with zipfile.ZipFile(directory / "atlas-sheet.aar") as aar:
+          with zipfile.ZipFile(directory / "better-sheet.aar") as aar:
               if not {"classes.jar", "AndroidManifest.xml"} <= set(aar.namelist()):
                   raise SystemExit("JitPack AAR is missing compiled library files")
               if aar.testzip() is not None:

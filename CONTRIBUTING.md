@@ -7,9 +7,9 @@ when changing those paths. Do not add a Material dependency to the core library.
 Before a pull request:
 
 ```bash
-./gradlew :atlas-sheet:testDebugUnitTest :atlas-sheet:lintRelease :sample:assembleDebug
+./gradlew :better-sheet:testDebugUnitTest :better-sheet:lintRelease :sample:assembleDebug
 ./gradlew :sample:connectedDebugAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.class=dev.atlas.sheet.sample.SheetUiTest
+  -Pandroid.testInstrumentationRunnerArguments.class=dev.better.sheet.sample.SheetUiTest
 ```
 
 Include the device/API/IME used and explain the reproduction scenario. When changing public API,

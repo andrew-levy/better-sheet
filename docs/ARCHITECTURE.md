@@ -1,6 +1,6 @@
 # Architecture and interaction contract
 
-Atlas has four layers: snap point resolution, state, interaction coordination, and rendering.
+Better has four layers: snap point resolution, state, interaction coordination, and rendering.
 
 `SheetGeometry` is Android-independent. It resolves heights into downward-growing offsets,
 clamps them to the available viewport and sticky chrome, and collapses equivalent physical
@@ -34,7 +34,7 @@ The layout gives the header and footer their own space and allocates the remaini
 viewport to the body. `Scroll` mode measures finite body content inside a library-owned
 vertical scroll container. Its natural height remains observable when the sheet clips its
 viewport, enabling live content snap points without duplicate composition. `Fill` mode delegates
-scroll ownership to the caller and is appropriate for lazy/reverse chat lists. Atlas never
+scroll ownership to the caller and is appropriate for lazy/reverse chat lists. Better never
 asks a lazy list for intrinsic measurements, nor pretends to know the height of uncomposed
 items. Use numeric or custom snap points for `Fill`.
 
@@ -45,12 +45,12 @@ snap point and restores the prior ID on keyboard close if it still exists. `Igno
 does not protect text entry from the keyboard. Compose/Android bring-into-view handles focused
 fields inside scroll containers; custom content must implement its own focus scrolling.
 
-`AtlasModalSheet` uses a full-size Compose Dialog to isolate focus and input at window level.
+`BetterModalSheet` uses a full-size Compose Dialog to isolate focus and input at window level.
 The OS dim flag is cleared, the dialog's system bars are transparent, and contrast overlays
 are disabled. The scrim is drawn once in Compose across the full host, including system bars.
 By default its alpha tracks the visible height until the lowest snap point and then holds. `scrimFollowsDrag = false` keeps that alpha at full strength whenever the sheet is visible.
 The sheet surface continues its container color behind the navigation bar. Dismissal callback runs once
-the sheet is visually gone, so a following tap is not swallowed by the spring's settling tail. `AtlasSheetHost` is an inline overlay with no modal focus
+the sheet is visually gone, so a following tap is not swallowed by the spring's settling tail. `BetterSheetHost` is an inline overlay with no modal focus
 isolation. `scrimEnabled = false` removes scrim drawing and touch handling, permitting outside
 touches to reach the background of an inline sheet. Color controls drawing only. An enabled
 scrim blocks outside touches even when `dismissOnScrim = false`. Modal windows always block
@@ -66,4 +66,4 @@ resizing, oversized accessibility text, gesture-navigation insets, keyboard vari
 TalkBack navigation and custom AndroidView nested-scroll interop. The shipped test suite and
 CI are a starting point. Predictive Back progress, linked motion or a shared scrim across
 stacked modals, edge-to-edge visual tuning on every OEM, and a measured frame-time benchmark
-suite are not implemented. Separate `AtlasModalSheet` calls do stack as independent dialogs.
+suite are not implemented. Separate `BetterModalSheet` calls do stack as independent dialogs.

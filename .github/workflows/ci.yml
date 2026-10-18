@@ -25,7 +25,7 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v6
       - run: chmod +x gradlew
-      - run: ./gradlew :atlas-sheet:testDebugUnitTest :atlas-sheet:lintRelease :sample:assembleDebug :sample:assembleDebugAndroidTest
+      - run: ./gradlew :better-sheet:testDebugUnitTest :better-sheet:lintRelease :sample:assembleDebug :sample:assembleDebugAndroidTest :findmy:assembleDebug
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -75,7 +75,7 @@ jobs:
             adb shell settings put secure show_ime_with_hard_keyboard 1
             adb shell settings put global hide_error_dialogs 1
             adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS
-            ./gradlew :sample:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.atlas.sheet.sample.SheetUiTest,dev.atlas.sheet.sample.SheetMotionTest,dev.atlas.sheet.sample.FragmentSheetTest,dev.atlas.sheet.sample.HeavyContentMotionTest
+            ./gradlew :sample:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.better.sheet.sample.SheetUiTest,dev.better.sheet.sample.SheetMotionTest,dev.better.sheet.sample.FragmentSheetTest,dev.better.sheet.sample.HeavyContentMotionTest
       - uses: actions/upload-artifact@v4
         if: always()
         with:

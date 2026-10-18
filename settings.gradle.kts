@@ -3,5 +3,5 @@ dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories { google(); mavenCentral() }
 }
-rootProject.name = "atlas-sheet"
-include(":atlas-sheet", ":sample", ":findmy")
+rootProject.name = "better-sheet"
+include(":better-sheet", ":sample", ":findmy")

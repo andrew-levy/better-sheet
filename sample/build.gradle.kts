@@ -4,10 +4,10 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 android {
-    namespace = "dev.atlas.sheet.sample"
+    namespace = "dev.better.sheet.sample"
     compileSdk = 35
     defaultConfig {
-        applicationId = "dev.atlas.sheet.sample"
+        applicationId = "dev.better.sheet.sample"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
@@ -23,7 +23,7 @@ android {
     testOptions { animationsDisabled = false }
 }
 dependencies {
-    implementation(project(":atlas-sheet"))
+    implementation(project(":better-sheet"))
     implementation(platform("androidx.compose:compose-bom:2025.06.01"))
     androidTestImplementation(platform("androidx.compose:compose-bom:2025.06.01"))
     implementation("androidx.activity:activity-compose:1.10.1")
