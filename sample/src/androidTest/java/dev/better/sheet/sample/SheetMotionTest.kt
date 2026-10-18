@@ -50,7 +50,7 @@ class SheetMotionTest {
         compose.mainClock.advanceTimeBy(200)
         compose.waitForIdle()
         val halfway = bounds()
-        assertTrue(halfway.width > collapsed.width)
+        assertTrue((halfway.right - halfway.left) > (collapsed.right - collapsed.left))
         assertTrue(halfway.left > 0.dp)
         compose.runOnUiThread { scope.launch { state.collapse() } }
         compose.mainClock.advanceTimeBy(600)
@@ -62,7 +62,7 @@ class SheetMotionTest {
         compose.waitForIdle()
         val expanded = bounds()
         assertEquals(0f, expanded.left.value, 1f)
-        assertTrue(expanded.width > halfway.width)
+        assertTrue((expanded.right - expanded.left) > (halfway.right - halfway.left))
         val footer = compose.onNodeWithTag("tray-footer").getUnclippedBoundsInRoot()
         assertTrue(footer.bottom <= expanded.bottom)
         compose.runOnUiThread { scope.launch { state.hide() } }
