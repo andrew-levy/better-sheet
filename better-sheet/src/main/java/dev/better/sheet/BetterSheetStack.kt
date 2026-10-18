@@ -4,7 +4,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.addOutline
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -86,6 +90,9 @@ public fun Modifier.sheetStackEffect(
     effect: SheetStackEffectScope.(SheetStackEntry) -> Unit,
 ): Modifier = composed {
     val entry = LocalSheetStackEntry.current ?: return@composed Modifier
+    // Scale and translation stay on the graphics layer so a covering sheet can move this one
+    // without relayout. Corner clipping cannot: GraphicsLayerScope.shape/clip re-records the
+    // layer empty, so the surface vanishes and only the scrim remains until the next layout.
     graphicsLayer {
         val values = SheetStackEffectScope().apply { effect(entry) }
         scaleX = values.scaleX
@@ -94,9 +101,18 @@ public fun Modifier.sheetStackEffect(
         translationY = values.translationY.toPx()
         alpha = values.alpha
         transformOrigin = values.transformOrigin
-        values.cornerRadius?.let {
-            shape = RoundedCornerShape(topStart = it, topEnd = it)
-            clip = true
+    }.drawWithCache {
+        val radius = SheetStackEffectScope().apply { effect(entry) }.cornerRadius
+        val path = radius?.let { corner ->
+            Path().apply {
+                addOutline(
+                    RoundedCornerShape(topStart = corner, topEnd = corner)
+                        .createOutline(size, layoutDirection, this@drawWithCache),
+                )
+            }
+        }
+        onDrawWithContent {
+            if (path == null) drawContent() else clipPath(path) { this@onDrawWithContent.drawContent() }
         }
     }
 }
