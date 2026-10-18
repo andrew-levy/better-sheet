@@ -53,6 +53,7 @@ public class SheetState internal constructor(
     internal var geometry: SheetGeometry? by mutableStateOf(null)
     private var dragDismiss = true
     private var programmaticHide = false
+    private var exitLayoutOffset: Float? = null
     private var managedPresentation = false
     internal var measurementsReady by mutableStateOf(false)
     internal var hasPresented by mutableStateOf(false)
@@ -95,7 +96,7 @@ public class SheetState internal constructor(
     public val targetSnapPoint: String? get() = if (presentationExiting) null else anchored.targetValue.takeUnless { it == HiddenId }
     public val isAnimationRunning: Boolean get() = anchored.isAnimationRunning || (transitionsManaged && !visibility.isIdle)
     public val isVisible: Boolean get() = (!transitionsManaged || presentationActive) && (geometry?.let { anchored.offset.isFinite() && anchored.offset < it.availableHeight - 0.5f } ?: false)
-    /** Continuous normalized visible height, useful for coordinated background animation. */
+    /** Normalized sheet height weighted by presentation progress, useful for coordinated backgrounds. */
     public val progress: Float get() = geometry?.let { ((it.availableHeight - offsetOrHidden()) / it.availableHeight).coerceIn(0f, 1f) * if (transitionsManaged) presentationFraction else 1f } ?: 0f
 
     internal fun offsetOrHidden(): Float = anchored.offset.takeIf { it.isFinite() } ?: (geometry?.availableHeight ?: 0f)
@@ -103,7 +104,7 @@ public class SheetState internal constructor(
     // Keep the transition's measured size after exit. Collapsing it when the hidden anchor
     // settles would retarget slideOut's distance and restart an already completed animation.
     internal fun layoutOffset(): Float = if (presentationExiting && anchored.settledValue == HiddenId) {
-        geometry?.offsets?.get(lastVisibleSnapPoint) ?: offsetOrHidden()
+        exitLayoutOffset ?: geometry?.offsets?.get(lastVisibleSnapPoint) ?: offsetOrHidden()
     } else offsetOrHidden()
 
     internal fun updateGeometry(next: SheetGeometry, dismissOnDrag: Boolean, layoutReady: Boolean = true) {
@@ -212,6 +213,7 @@ public class SheetState internal constructor(
         updateAnchors()
         try {
             if (transitionsManaged) {
+                exitLayoutOffset = offsetOrHidden()
                 visibility.targetState = EnterExitState.PostExit
                 awaitPresentation(EnterExitState.PostExit)
                 anchored.snapTo(HiddenId)

@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -55,8 +54,19 @@ class AnimationCustomizationTest {
         val early = compose.onNodeWithTag("fade-header").getUnclippedBoundsInRoot().top
         assertTrue(state.isAnimationRunning)
         fun sheetRed(): Float {
-            val pixels = compose.onNodeWithTag("fade-host").captureToImage().toPixelMap()
-            return pixels[pixels.width / 2, pixels.height * 3 / 4].red
+            // UiAutomation works on API 24 too; Compose captureToImage requires API 26.
+            val drawn = java.util.concurrent.CountDownLatch(1)
+            compose.runOnUiThread {
+                android.view.Choreographer.getInstance().postFrameCallback {
+                    android.view.Choreographer.getInstance().postFrameCallback { drawn.countDown() }
+                }
+            }
+            check(drawn.await(5, java.util.concurrent.TimeUnit.SECONDS))
+            val bitmap = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
+                .uiAutomation.takeScreenshot() ?: error("Screenshot failed")
+            val red = android.graphics.Color.red(bitmap.getPixel(bitmap.width / 2, bitmap.height * 3 / 4)) / 255f
+            bitmap.recycle()
+            return red
         }
         val earlyRed = sheetRed()
         compose.mainClock.advanceTimeBy(800)
