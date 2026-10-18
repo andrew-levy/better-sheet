@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -43,8 +44,8 @@ public fun BetterSheet(
     footer: @Composable (() -> Unit)? = null,
     surfaceModifier: Modifier = Modifier,
     presentation: SheetPresentation = SheetPresentation.Standard,
-    enterTransition: EnterTransition = slideInVertically(defaultSheetSpring()) { it },
-    exitTransition: ExitTransition = slideOutVertically(defaultSheetSpring()) { it },
+    enterTransition: EnterTransition = slideInVertically(defaultSheetSpring(IntOffset(1, 1))) { it },
+    exitTransition: ExitTransition = slideOutVertically(defaultSheetSpring(IntOffset(1, 1))) { it },
     snapAnimationSpec: AnimationSpec<Float> = defaultSheetSpring(),
     content: @Composable ColumnScope.() -> Unit,
 ) {

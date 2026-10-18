@@ -78,8 +78,8 @@ public fun BetterModalSheet(
     surfaceModifier: Modifier = Modifier,
     stackState: SheetStackState? = null,
     presentation: SheetPresentation = SheetPresentation.Standard,
-    enterTransition: EnterTransition = slideInVertically(defaultSheetSpring()) { it },
-    exitTransition: ExitTransition = slideOutVertically(defaultSheetSpring()) { it },
+    enterTransition: EnterTransition = slideInVertically(defaultSheetSpring(IntOffset(1, 1))) { it },
+    exitTransition: ExitTransition = slideOutVertically(defaultSheetSpring(IntOffset(1, 1))) { it },
     snapAnimationSpec: AnimationSpec<Float> = defaultSheetSpring(),
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -155,8 +155,8 @@ public fun BetterSheetHost(
     footer: @Composable (() -> Unit)? = null,
     surfaceModifier: Modifier = Modifier,
     presentation: SheetPresentation = SheetPresentation.Standard,
-    enterTransition: EnterTransition = slideInVertically(defaultSheetSpring()) { it },
-    exitTransition: ExitTransition = slideOutVertically(defaultSheetSpring()) { it },
+    enterTransition: EnterTransition = slideInVertically(defaultSheetSpring(IntOffset(1, 1))) { it },
+    exitTransition: ExitTransition = slideOutVertically(defaultSheetSpring(IntOffset(1, 1))) { it },
     snapAnimationSpec: AnimationSpec<Float> = defaultSheetSpring(),
     content: @Composable ColumnScope.() -> Unit,
 ) {

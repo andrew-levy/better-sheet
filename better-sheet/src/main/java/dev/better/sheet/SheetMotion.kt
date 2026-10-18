@@ -17,9 +17,10 @@ internal const val IosSheetSpringDampingRatio = 1f
 internal val IosSheetSpringStiffness: Float =
     (2.0 * PI / IosSheetSpringDurationSeconds).let { (it * it).toFloat() }
 
-internal fun <T> defaultSheetSpring(): SpringSpec<T> = spring(
+internal fun <T> defaultSheetSpring(visibilityThreshold: T? = null): SpringSpec<T> = spring(
     dampingRatio = IosSheetSpringDampingRatio,
     stiffness = IosSheetSpringStiffness,
+    visibilityThreshold = visibilityThreshold,
 )
 
 /** UIScrollView rubber-band coefficient used by iOS sheets. */

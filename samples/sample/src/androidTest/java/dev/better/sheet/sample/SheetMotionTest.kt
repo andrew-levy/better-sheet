@@ -34,6 +34,8 @@ class SheetMotionTest {
             scope = rememberCoroutineScope()
             BetterSheet(state, listOf(SheetSnapPoint.fraction("medium", .6f), SheetSnapPoint.expanded()),
                 snapAnimationSpec = tween(400),
+                enterTransition = slideInVertically(tween(400)) { it },
+                exitTransition = slideOutVertically(tween(400)) { it },
                 maxWidth = 2000.dp,
                 presentation = SheetPresentation.Tray(matchDeviceCorners = false),
                 surfaceModifier = Modifier.testTag("tray-surface"),
