@@ -82,3 +82,20 @@ rather than scaling text. Derived progress avoids extra composition below the mo
 Tray owns its rounded shape; Standard continues using the supplied `shape`. Android 12+ window
 corner metadata informs collapsed radii; older or embedded windows use the configured fallback.
 This is an opaque surface treatment, not a backdrop-blur or refraction implementation.
+
+
+### Shared draw clipping
+
+Surface, stack, and body viewport clipping use `sheetDrawClip`, a cached draw-pass outline.
+Transforms and elevation can remain on graphics layers, but those layers never own the animated
+clip. This extends PR #16's fix to the tray's outer clip and the implicit clip in `shadow`.
+The surface shadow surrounds the entire surface, including its reserved navigation area;
+that area is repainted after child drawing so footer elevation cannot create an internal seam.
+`TrayRenderingTest` uses the real device clock and UiAutomation screenshots without forcing
+layout or using Compose captureToImage. It checks repeated full/partial transitions and the
+navigation strip, complementing the frame-stepped demonstration.
+
+Corner metadata is refreshed after platform inset dispatch, including dialog decor insets.
+The host's actual bounds determine eligibility, rather than requiring the Compose view and
+decor view to have identical dimensions. Metadata matching affects collapsed circular radii;
+expanded top corners remain explicitly configured. It is not an exact physical screen mask.

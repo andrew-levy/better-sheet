@@ -86,6 +86,9 @@ public fun Modifier.sheetStackEffect(
     effect: SheetStackEffectScope.(SheetStackEntry) -> Unit,
 ): Modifier = composed {
     val entry = LocalSheetStackEntry.current ?: return@composed Modifier
+    // Scale and translation stay on the graphics layer so a covering sheet can move this one
+    // without relayout. Corner clipping cannot: GraphicsLayerScope.shape/clip re-records the
+    // layer empty, so the surface vanishes and only the scrim remains until the next layout.
     graphicsLayer {
         val values = SheetStackEffectScope().apply { effect(entry) }
         scaleX = values.scaleX
@@ -94,9 +97,9 @@ public fun Modifier.sheetStackEffect(
         translationY = values.translationY.toPx()
         alpha = values.alpha
         transformOrigin = values.transformOrigin
-        values.cornerRadius?.let {
-            shape = RoundedCornerShape(topStart = it, topEnd = it)
-            clip = true
+    }.sheetDrawClip {
+        SheetStackEffectScope().apply { effect(entry) }.cornerRadius?.let {
+            RoundedCornerShape(topStart = it, topEnd = it)
         }
     }
 }

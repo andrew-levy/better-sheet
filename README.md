@@ -476,7 +476,9 @@ and bottom gaps, 32.dp fallback corners, 28.dp expanded top corners, and morphin
 40% of available height. Customize with `horizontalInset`, `bottomInset`, `cornerRadius`,
 `expandedCornerRadius`, `morphStartFraction`, and `matchDeviceCorners`. Android 12+ reported
 window corners inform the collapsed radius; use `matchDeviceCorners = false` for an explicit
-radius. Tray owns its shape; `shape` remains the Standard presentation's setting.
+radius. Matching applies to collapsed corners; expanded top corners use `expandedCornerRadius`.
+Unavailable metadata, embedded hosts, and width-capped surfaces use the configured fallback.
+This matches a reported circular radius, not every device's physical corner contour. Tray owns its shape; `shape` remains the Standard presentation's setting.
 
 Dragging, reversing, and programmatic snap changes all drive the same morph. Short sheets stay
 floating; navigation/keyboard safe areas remain protected. The existing `maxWidth` still applies

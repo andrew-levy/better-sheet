@@ -23,7 +23,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -31,6 +30,8 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
@@ -165,6 +166,8 @@ public fun BetterSheetHost(
     require(maxWidth.value.isFinite() && maxWidth > 0.dp)
     require(topMargin.value.isFinite() && topMargin >= 0.dp)
     val deviceCornerRadius = rememberSheetDeviceCornerRadius()
+    val hostView = LocalView.current
+    var hostReachesWindowEdges by remember { mutableStateOf(false) }
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
@@ -235,7 +238,12 @@ public fun BetterSheetHost(
         if (imeVisible) keyboard?.hide() else scope.launch { state.hide() }
     }
 
-    Box(modifier.fillMaxSize().onSizeChanged { viewportHeight = it.height }) {
+    Box(modifier.fillMaxSize().onSizeChanged { viewportHeight = it.height }.onGloballyPositioned {
+        val bounds = it.boundsInWindow()
+        val root = hostView.rootView
+        hostReachesWindowEdges = bounds.left <= 1f && bounds.right >= root.width - 1f &&
+            bounds.bottom >= root.height - 1f && bounds.width <= with(density) { maxWidth.toPx() } + 1f
+    }) {
         val availablePx = viewportHeight - with(density) { topMargin.toPx() } - topInset - bottomInset
         if (availablePx <= 0f) return@Box
         val tray = presentation as? SheetPresentation.Tray
@@ -293,7 +301,7 @@ public fun BetterSheetHost(
         val navExtension = if (tray != null && !keyboardCoversNav) navInset * morph else 0f
         val radius = tray?.let {
             val reported = with(density) { deviceCornerRadius.toDp() } - it.horizontalInset
-            if (it.matchDeviceCorners && deviceCornerRadius > 0f) reported.coerceAtLeast(0.dp) else it.cornerRadius
+            if (it.matchDeviceCorners && hostReachesWindowEdges && deviceCornerRadius > 0f) reported.coerceAtLeast(0.dp) else it.cornerRadius
         } ?: 0.dp
         val surfaceShape = if (tray == null) shape else RoundedCornerShape(
             topStart = radius * (1f - morph) + tray.expandedCornerRadius * morph,
@@ -318,11 +326,13 @@ public fun BetterSheetHost(
             .widthIn(max = maxWidth).fillMaxWidth()
             .padding(horizontal = traySide)
             .then(surfaceModifier)
-            .clip(surfaceShape)
+            .shadow(16.dp, surfaceShape, clip = false)
+            .sheetDrawClip { surfaceShape }
+            .sheetNavigationCover(containerColor, navExtension)
 
         Layout(modifier = sheetSurfaceModifier, content = {
             Layout(modifier = Modifier.fillMaxWidth()
-                .shadow(16.dp, surfaceShape).background(containerColor, surfaceShape)
+                .background(containerColor)
                 .padding(bottom = with(density) { navExtension.toDp() })
                 .then(if (behavior.draggable) Modifier.nestedScroll(nested).pointerInput(nested) {
                     awaitEachGesture {
@@ -402,7 +412,7 @@ public fun SheetDragHandle(modifier: Modifier = Modifier, color: Color = Color(0
     }
 }
 
-private fun Modifier.clipToBoundsForSheet(): Modifier = this.clip(androidx.compose.ui.graphics.RectangleShape)
+private fun Modifier.clipToBoundsForSheet(): Modifier = this.sheetDrawClip { androidx.compose.ui.graphics.RectangleShape }
 
 private fun Modifier.downwardRubber(state: SheetState): Modifier =
     offset { IntOffset(0, downwardShift(state.rubberTranslation).roundToInt()) }

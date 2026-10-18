@@ -2,8 +2,9 @@ package dev.better.sheet
 
 import android.os.Build
 import android.view.RoundedCorner
-import android.view.View
+import android.view.ViewTreeObserver
 import androidx.compose.runtime.*
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -50,19 +51,22 @@ internal fun rememberSheetDeviceCornerRadius(): Float {
     val view = LocalView.current
     var radius by remember(view) { mutableFloatStateOf(0f) }
     DisposableEffect(view) {
-        fun update() {
-            radius = if (Build.VERSION.SDK_INT >= 31 && view.width == view.rootView.width &&
-                view.height == view.rootView.height) {
+        // Dialog Compose roots need not have the decor's exact measured height. Read the
+        // window metadata directly and refresh after inset dispatch without replacing the
+        // host's inset listener. Some devices supply corners only after the first layout.
+        val observer = view.viewTreeObserver
+        val listener = ViewTreeObserver.OnPreDrawListener {
+            radius = if (Build.VERSION.SDK_INT >= 31) {
+                val decor = (view.parent as? DialogWindowProvider)?.window?.decorView ?: view.rootView
+                val insets = decor.rootWindowInsets ?: view.rootWindowInsets
                 listOf(RoundedCorner.POSITION_BOTTOM_LEFT, RoundedCorner.POSITION_BOTTOM_RIGHT)
-                    .mapNotNull { view.rootWindowInsets?.getRoundedCorner(it)?.radius }
+                    .mapNotNull { insets?.getRoundedCorner(it)?.radius }
                     .maxOrNull()?.toFloat() ?: 0f
             } else 0f
+            true
         }
-        val listener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> update() }
-        val refresh = Runnable { update() }
-        view.addOnLayoutChangeListener(listener)
-        view.post(refresh)
-        onDispose { view.removeOnLayoutChangeListener(listener); view.removeCallbacks(refresh) }
+        observer.addOnPreDrawListener(listener)
+        onDispose { if (observer.isAlive) observer.removeOnPreDrawListener(listener) }
     }
     return radius
 }
