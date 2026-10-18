@@ -30,8 +30,8 @@ class SheetUiTest {
         compose.waitUntil(10000) { compose.onAllNodesWithTag("footer").fetchSemanticsNodes().isNotEmpty() }
         compose.waitForIdle()
     }
-    @Test fun footerIsVisibleAtEveryDetent() {
-        open("Snap Points")
+    @Test fun footerIsVisibleAtEverySnapPoint() {
+        open("SnapPoints")
         listOf("peek", "expanded", "medium").forEach { id ->
             compose.onNodeWithTag("snap-point-$id").performClick()
             compose.waitForIdle()
@@ -137,13 +137,13 @@ class SheetUiTest {
         compose.onNodeWithTag("open-Stack").assertIsDisplayed()
     }
     @Test fun scrollingHandsOffToSheetAndCanDismiss() {
-        open("Snap Points")
+        open("SnapPoints")
         compose.onNodeWithTag("body-list").performTouchInput { swipeUp() }
         compose.waitForIdle()
         compose.onNodeWithTag("footer").assertIsDisplayed()
         compose.onNodeWithTag("close").performClick()
         compose.waitForIdle()
-        compose.onNodeWithTag("open-Snap Points").assertIsDisplayed()
+        compose.onNodeWithTag("open-SnapPoints").assertIsDisplayed()
     }
     @Test fun footerKeepsItsSpaceWhenTheHeaderIsTooTallForTheWindow() {
         compose.runOnUiThread {
