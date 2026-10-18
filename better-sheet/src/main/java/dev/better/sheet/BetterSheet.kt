@@ -23,14 +23,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
@@ -75,6 +75,7 @@ public fun BetterModalSheet(
     footer: @Composable (() -> Unit)? = null,
     surfaceModifier: Modifier = Modifier,
     stackState: SheetStackState? = null,
+    presentation: SheetPresentation = SheetPresentation.Standard,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     SideEffect { state.prepareModalPresentation() }
@@ -129,7 +130,7 @@ public fun BetterModalSheet(
         CompositionLocalProvider(LocalSheetStackEntry provides entry) {
             BetterSheetHost(
                 state, snapPoints, modifier, behavior, bodyMode, title, maxWidth, topMargin,
-                containerColor, contentColor, scrimColor, shape, dragHandle, header, footer, surfaceModifier, content,
+                containerColor, contentColor, scrimColor, shape, dragHandle, header, footer, surfaceModifier, presentation, content,
             )
         }
     }
@@ -154,6 +155,7 @@ public fun BetterSheetHost(
     header: @Composable (() -> Unit)? = null,
     footer: @Composable (() -> Unit)? = null,
     surfaceModifier: Modifier = Modifier,
+    presentation: SheetPresentation = SheetPresentation.Standard,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     require(snapPoints.isNotEmpty() && snapPoints.map { it.id }.distinct().size == snapPoints.size)
@@ -162,6 +164,9 @@ public fun BetterSheetHost(
     }
     require(maxWidth.value.isFinite() && maxWidth > 0.dp)
     require(topMargin.value.isFinite() && topMargin >= 0.dp)
+    val deviceCornerRadius = rememberSheetDeviceCornerRadius()
+    val hostView = LocalView.current
+    var hostReachesWindowEdges by remember { mutableStateOf(false) }
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
@@ -232,14 +237,21 @@ public fun BetterSheetHost(
         if (imeVisible) keyboard?.hide() else scope.launch { state.hide() }
     }
 
-    Box(modifier.fillMaxSize().onSizeChanged { viewportHeight = it.height }) {
+    Box(modifier.fillMaxSize().onSizeChanged { viewportHeight = it.height }.onGloballyPositioned {
+        val bounds = it.boundsInWindow()
+        val root = hostView.rootView
+        hostReachesWindowEdges = bounds.left <= 1f && bounds.right >= root.width - 1f &&
+            bounds.bottom >= root.height - 1f && bounds.width <= with(density) { maxWidth.toPx() } + 1f
+    }) {
         val availablePx = viewportHeight - with(density) { topMargin.toPx() } - topInset - bottomInset
         if (availablePx <= 0f) return@Box
+        val tray = presentation as? SheetPresentation.Tray
         val chrome = headerHeight + footerHeight
+        val trayChrome = chrome + with(density) { (tray?.bottomInset ?: 0.dp).roundToPx() }
         val snapPointScope = with(density) {
-            SheetSnapPointScope(availablePx.toDp(), animatedContentHeight.value.toDp(), chrome.toDp())
+            SheetSnapPointScope(availablePx.toDp(), animatedContentHeight.value.toDp(), trayChrome.toDp())
         }
-        val geometry = SheetGeometry.resolve(availablePx, chrome.toFloat(), snapPoints.map { d ->
+        val geometry = SheetGeometry.resolve(availablePx, trayChrome.toFloat(), snapPoints.map { d ->
             d.id to with(density) { d.resolve(snapPointScope).toPx() }
         })
         val layoutReady = headerMeasured && footerMeasured &&
@@ -275,7 +287,27 @@ public fun BetterSheetHost(
                 })
         }
         val keyboardCoversNav = behavior.keyboardBehavior != SheetKeyboardBehavior.Ignore && imeInset > navInset
-        if (isVisible && navInset > 0 && !keyboardCoversNav) {
+        val morph by remember(state, tray, availablePx) {
+            derivedStateOf {
+                if (tray == null) 0f else trayMorphFraction(
+                    availablePx - state.offsetOrHidden(), availablePx, tray.morphStartFraction,
+                )
+            }
+        }
+        val traySide = (tray?.horizontalInset ?: 0.dp) * (1f - morph)
+        val trayGap = (tray?.bottomInset ?: 0.dp) * (1f - morph)
+        // Move the surface into the navigation area while reserving the same space inside it.
+        val navExtension = if (tray != null && !keyboardCoversNav) navInset * morph else 0f
+        val radius = tray?.let {
+            val reported = with(density) { deviceCornerRadius.toDp() } - it.horizontalInset
+            if (it.matchDeviceCorners && hostReachesWindowEdges && deviceCornerRadius > 0f) reported.coerceAtLeast(0.dp) else it.cornerRadius
+        } ?: 0.dp
+        val surfaceShape = if (tray == null) shape else RoundedCornerShape(
+            topStart = radius * (1f - morph) + tray.expandedCornerRadius * morph,
+            topEnd = radius * (1f - morph) + tray.expandedCornerRadius * morph,
+            bottomStart = radius * (1f - morph), bottomEnd = radius * (1f - morph),
+        )
+        if (tray == null && isVisible && navInset > 0 && !keyboardCoversNav) {
             // The sheet sits on the bottom edge. Continue its color under the navigation
             // bar so the bar does not pick up a separate, darker system scrim.
             Box(Modifier.align(Alignment.BottomCenter)
@@ -288,15 +320,19 @@ public fun BetterSheetHost(
         val sheetSurfaceModifier = Modifier
             .align(Alignment.BottomCenter)
             .downwardRubber(state)
-            .padding(bottom = with(density) { bottomInset.toDp() })
+            .padding(bottom = with(density) { (bottomInset - navExtension).toDp() } + trayGap)
             .windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout).only(WindowInsetsSides.Horizontal))
             .widthIn(max = maxWidth).fillMaxWidth()
+            .padding(horizontal = traySide)
             .then(surfaceModifier)
-            .clip(shape)
+            .sheetSurfaceShadow(if (tray == null) 16.dp else 16.dp * (1f - morph), surfaceShape)
+            .sheetDrawClip { surfaceShape }
+            .sheetNavigationCover(containerColor, navExtension)
 
         Layout(modifier = sheetSurfaceModifier, content = {
             Layout(modifier = Modifier.fillMaxWidth()
-                .shadow(16.dp, shape).background(containerColor, shape)
+                .background(containerColor)
+                .padding(bottom = with(density) { navExtension.toDp() })
                 .then(if (behavior.draggable) Modifier.nestedScroll(nested).pointerInput(nested) {
                     awaitEachGesture {
                         awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
@@ -355,8 +391,12 @@ public fun BetterSheetHost(
             val visibleHeight = (availablePx - state.offsetOrHidden()).coerceIn(0f, availablePx)
             val stretch = upwardStretch(state.rubberTranslation)
             val base = if (chrome == 0) availablePx else visibleHeight.coerceAtLeast(chrome.toFloat().coerceAtMost(availablePx))
-            val child = measurables.single().measure(Constraints.fixed(constraints.maxWidth, (base + stretch).roundToInt()))
-            layout(constraints.maxWidth, (visibleHeight + stretch).roundToInt()) { child.place(0, 0) }
+            // Compensate the external gap/extension so the top edge stays on its detent.
+            val adjustment = navExtension - trayGap.toPx()
+            val childHeight = (base + stretch + adjustment).roundToInt().coerceAtLeast(0)
+            val visible = (visibleHeight + stretch + adjustment).roundToInt().coerceAtLeast(0)
+            val child = measurables.single().measure(Constraints.fixed(constraints.maxWidth, childHeight))
+            layout(constraints.maxWidth, visible) { child.place(0, 0) }
         }
     }
 }
@@ -371,7 +411,7 @@ public fun SheetDragHandle(modifier: Modifier = Modifier, color: Color = Color(0
     }
 }
 
-private fun Modifier.clipToBoundsForSheet(): Modifier = this.clip(androidx.compose.ui.graphics.RectangleShape)
+private fun Modifier.clipToBoundsForSheet(): Modifier = this.sheetDrawClip { androidx.compose.ui.graphics.RectangleShape }
 
 private fun Modifier.downwardRubber(state: SheetState): Modifier =
     offset { IntOffset(0, downwardShift(state.rubberTranslation).roundToInt()) }

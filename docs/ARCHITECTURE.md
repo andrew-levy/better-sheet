@@ -67,3 +67,35 @@ TalkBack navigation and custom AndroidView nested-scroll interop. The shipped te
 CI are a starting point. Predictive Back progress, linked motion or a shared scrim across
 stacked modals, edge-to-edge visual tuning on every OEM, and a measured frame-time benchmark
 suite are not implemented. Separate `BetterModalSheet` calls do stack as independent dialogs.
+
+## Tray presentation
+
+`SheetPresentation.Tray` is surface geometry on the existing host, root and modal components.
+It shares detents, nested scroll, dismissal and the state animation clock. Morph progress is a
+smoothstep of visible height over available height (default final 40%); it is not an independently
+animated target. Short maximum detents remain floating. Overscroll is clamped for shape morphing.
+External side/bottom gaps shrink to zero. Surface height compensates for the bottom gap so the top
+edge stays on its resolved detent. Navigation space moves inside the surface as it expands; the
+footer remains above navigation controls. IME avoidance continues to use the existing policy.
+Tray gap is included in minimum chrome/content-fit measurement. Width changes remeasure content,
+rather than scaling text. Derived progress avoids extra composition below the morph threshold.
+Tray owns its rounded shape; Standard continues using the supplied `shape`. Android 12+ window
+corner metadata informs collapsed radii; older or embedded windows use the configured fallback.
+This is an opaque surface treatment, not a backdrop-blur or refraction implementation.
+
+
+### Shared draw clipping
+
+Surface, stack, and body viewport clipping use `sheetDrawClip`, a cached draw-pass outline.
+Transforms and elevation can remain on graphics layers, but those layers never own the animated
+clip. This extends PR #16's fix to the tray's outer clip and the implicit clip in `shadow`.
+The surface shadow surrounds the entire surface, including its reserved navigation area;
+that area is repainted after child drawing so footer elevation cannot create an internal seam.
+`TrayRenderingTest` uses the real device clock and UiAutomation screenshots without forcing
+layout or using Compose captureToImage. It checks repeated full/partial transitions and the
+navigation strip, complementing the frame-stepped demonstration.
+
+Corner metadata is refreshed after platform inset dispatch, including dialog decor insets.
+The host's actual bounds determine eligibility, rather than requiring the Compose view and
+decor view to have identical dimensions. Metadata matching affects collapsed circular radii;
+expanded top corners remain explicitly configured. It is not an exact physical screen mask.

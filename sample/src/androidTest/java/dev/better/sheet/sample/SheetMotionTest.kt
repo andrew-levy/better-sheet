@@ -23,6 +23,56 @@ import org.junit.Test
 class SheetMotionTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
+    @Test fun trayMorphsAtIntermediateFramesAndReversesWithoutRemounting() {
+        lateinit var state: SheetState
+        lateinit var scope: CoroutineScope
+        var mounts = 0
+        compose.runOnUiThread { compose.activity.setContent {
+            state = rememberSheetState("medium", tween(400))
+            scope = rememberCoroutineScope()
+            BetterSheet(state, listOf(SheetSnapPoint.fraction("medium", .6f), SheetSnapPoint.expanded()),
+                maxWidth = 2000.dp,
+                presentation = SheetPresentation.Tray(matchDeviceCorners = false),
+                surfaceModifier = Modifier.testTag("tray-surface"),
+                header = { Spacer(Modifier.fillMaxWidth().height(48.dp).testTag("tray-header")) },
+                footer = { Spacer(Modifier.fillMaxWidth().height(48.dp).testTag("tray-footer")) },
+                bodyMode = SheetBodyMode.Fill) {
+                DisposableEffect(Unit) { mounts++; onDispose {} }
+                Spacer(Modifier.fillMaxSize())
+            }
+        } }
+        compose.waitForIdle()
+        fun bounds() = compose.onNodeWithTag("tray-surface").getUnclippedBoundsInRoot()
+        val collapsed = bounds()
+        assertEquals(12f, collapsed.left.value, 1f)
+        compose.mainClock.autoAdvance = false
+        compose.runOnUiThread { scope.launch { state.expand() } }
+        compose.mainClock.advanceTimeBy(200)
+        compose.waitForIdle()
+        val halfway = bounds()
+        assertTrue((halfway.right - halfway.left) > (collapsed.right - collapsed.left))
+        assertTrue(halfway.left > 0.dp)
+        compose.runOnUiThread { scope.launch { state.collapse() } }
+        compose.mainClock.advanceTimeBy(600)
+        compose.waitForIdle()
+        assertEquals(collapsed.left.value, bounds().left.value, 1f)
+        assertEquals(collapsed.top.value, bounds().top.value, 1f)
+        compose.runOnUiThread { scope.launch { state.expand() } }
+        compose.mainClock.advanceTimeBy(600)
+        compose.waitForIdle()
+        val expanded = bounds()
+        assertEquals(0f, expanded.left.value, 1f)
+        assertTrue((expanded.right - expanded.left) > (halfway.right - halfway.left))
+        val footer = compose.onNodeWithTag("tray-footer").getUnclippedBoundsInRoot()
+        assertTrue(footer.bottom <= expanded.bottom)
+        compose.runOnUiThread { scope.launch { state.hide() } }
+        compose.mainClock.advanceTimeBy(600)
+        compose.waitForIdle()
+        assertFalse(state.isVisible)
+        assertEquals(1, mounts)
+        compose.mainClock.autoAdvance = true
+    }
+
     @Test fun inlineBackgroundTouchesAreIndependentOfScrimColor() {
         var color by mutableStateOf(Color.Unspecified)
         var behavior by mutableStateOf(SheetBehavior())

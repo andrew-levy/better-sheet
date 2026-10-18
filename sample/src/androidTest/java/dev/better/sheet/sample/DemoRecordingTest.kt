@@ -107,6 +107,27 @@ class DemoRecordingTest {
         header.performTouchInput { up() }; pause()
     }
 
+    @Test fun tray() {
+        open("Tray")
+        val header = compose.onNodeWithTag("sheet-header")
+        header.performTouchInput { down(center) }
+        repeat(30) {
+            header.performTouchInput { moveBy(androidx.compose.ui.geometry.Offset(0f, -10f), delayMillis = FRAME_MILLIS) }
+            pause(FRAME_MILLIS)
+        }
+        // Reverse while still touching: corners and margins should follow with no trailing tween.
+        repeat(12) {
+            header.performTouchInput { moveBy(androidx.compose.ui.geometry.Offset(0f, 10f), delayMillis = FRAME_MILLIS) }
+            pause(FRAME_MILLIS)
+        }
+        header.performTouchInput { up() }; pause()
+        compose.onNodeWithTag("detent-expanded").performClick(); pause()
+        compose.onNodeWithTag("body-list").performTouchInput { swipeUp() }; pause()
+        compose.onNodeWithTag("detent-medium").performClick(); pause()
+        compose.onNodeWithTag("detent-peek").performClick(); pause()
+        compose.onNodeWithTag("close").performClick(); pause()
+    }
+
     @Test fun chat() {
         open("Chat")
         compose.onNodeWithTag("composer").performClick(); pause()
