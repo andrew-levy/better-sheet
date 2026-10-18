@@ -73,7 +73,7 @@ then remove or pop the Fragment in `onDismissed`.
 
 ## BetterModalSheet: a modal above your screen
 
-![Modal sheet opening, resizing between snap points, and closing](docs/videos/detents.gif)
+![Modal sheet opening, resizing between snap points, and closing](docs/videos/snapPoints.gif)
 
 Use this for a modal in an ordinary Compose screen. No Fragment or separate visibility
 boolean is needed.
@@ -294,7 +294,7 @@ class OrderSheetFragment : Fragment() {
 Mount the Fragment in a full-window container so the scrim can cover the background. For
 back-stack navigation, replace the removal callback with your navigation's pop operation.
 The sheet handles Back while visible. Avoid a second Fragment slide transition on the same view.
-See the runnable [Fragment sample](sample/src/main/java/dev/better/sheet/sample/FragmentDemoActivity.kt).
+See the runnable [Fragment sample](samples/sample/src/main/java/dev/better/sheet/sample/FragmentDemoActivity.kt).
 
 `BetterSheetHost` remains a lower-level public rendering API. Prefer `BetterSheet` for inline
 usage with managed entry/exit and `onDismissed`.

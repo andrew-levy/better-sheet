@@ -79,16 +79,16 @@ class DemoRecordingTest {
         pause()
     }
 
-    @Test fun detents() {
-        open("Detents")
-        listOf("peek", "expanded", "medium").forEach { compose.onNodeWithTag("detent-$it").performClick(); pause() }
+    @Test fun snapPoints() {
+        open("SnapPoints")
+        listOf("peek", "expanded", "medium").forEach { compose.onNodeWithTag("snap-point-$it").performClick(); pause() }
         compose.onNodeWithTag("body-list").performTouchInput { swipeUp() }; pause()
         compose.onNodeWithTag("close").performClick(); pause()
     }
     @Test fun scrollHandoff() {
         // Reproduce the reported chat case: half-expanded, mid-thread, then a slow handle drag.
         open("Chat")
-        compose.onNodeWithTag("detent-medium").performClick(); pause()
+        compose.onNodeWithTag("snap-point-medium").performClick(); pause()
         compose.onNodeWithTag("body-list").performTouchInput {
             swipeUp(startY = bottom * .78f, endY = top + height * .42f, durationMillis = 900)
         }
@@ -121,10 +121,10 @@ class DemoRecordingTest {
             pause(FRAME_MILLIS)
         }
         header.performTouchInput { up() }; pause()
-        compose.onNodeWithTag("detent-expanded").performClick(); pause()
+        compose.onNodeWithTag("snap-point-expanded").performClick(); pause()
         compose.onNodeWithTag("body-list").performTouchInput { swipeUp() }; pause()
-        compose.onNodeWithTag("detent-medium").performClick(); pause()
-        compose.onNodeWithTag("detent-peek").performClick(); pause()
+        compose.onNodeWithTag("snap-point-medium").performClick(); pause()
+        compose.onNodeWithTag("snap-point-peek").performClick(); pause()
         compose.onNodeWithTag("close").performClick(); pause()
     }
 
@@ -134,7 +134,7 @@ class DemoRecordingTest {
         compose.onNodeWithTag("composer").performTextInput("A composer that stays with you."); pause()
         compose.onNodeWithTag("send").performClick(); pause()
         UiDevice.getInstance(instrumentation).pressBack(); pause()
-        compose.onNodeWithTag("detent-peek").performClick(); pause()
+        compose.onNodeWithTag("snap-point-peek").performClick(); pause()
     }
     @Test fun contentFit() {
         open("Fit")
@@ -161,7 +161,7 @@ class DemoRecordingTest {
         pause()
         // Downward at the top of the list is given to the sheet and can dismiss it.
         compose.onNodeWithTag("body-list").performTouchInput { swipeUp(startY = bottom * .75f, endY = bottom * .35f) }; pause()
-        compose.onNodeWithTag("detent-expanded").performClick(); pause()
+        compose.onNodeWithTag("snap-point-expanded").performClick(); pause()
         compose.onNodeWithTag("close").performClick(); pause()
     }
 
