@@ -63,7 +63,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/** Real-clock opening timings, from the open request to the sheet settling at its detent. */
+/** Real-clock opening timings, from the open request to the sheet settling at its snap point. */
 data class OpenTiming(val firstMotionMillis: Long, val settledMillis: Long, val longestFrameMillis: Long, val frames: Int)
 
 object OpenTimings {
@@ -71,7 +71,7 @@ object OpenTimings {
 }
 
 enum class Demo(val label: String, val subtitle: String) {
-    Detents("Detents", "Peek, medium, expanded • scroll handoff"),
+    Snap Points("Snap Points", "Peek, medium, expanded • scroll handoff"),
     Tray("Floating tray", "Inset corners • continuous edge-to-edge morph"),
     Chat("Chat", "Lazy list • composer above keyboard"),
     Fit("Content fit", "Intrinsic size • live content changes"),
@@ -167,7 +167,7 @@ private fun DemoSheet(demo: Demo, openedAt: Long, close: () -> Unit) {
         mutableStateListOf(
             "Welcome to Better Sheet.",
             "Try scrolling, then opening the keyboard.",
-            "The composer stays visible at every detent.",
+            "The composer stays visible at every snap point.",
             "Sounds good. Let's ship it.",
         ).apply { repeat(36) { add("Message ${it + 1}: shared context stays scrollable.") } }
     }
@@ -184,7 +184,7 @@ private fun DemoSheet(demo: Demo, openedAt: Long, close: () -> Unit) {
             if (demo != Demo.Fit) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("peek", "medium", "expanded").forEach { id ->
-                        FilterChip(selected = state.currentSnapPoint == id, onClick = { scope.launch { state.animateTo(id) } }, label = { Text(id.replaceFirstChar { it.uppercase() }) }, modifier = Modifier.testTag("detent-$id"))
+                        FilterChip(selected = state.currentSnapPoint == id, onClick = { scope.launch { state.animateTo(id) } }, label = { Text(id.replaceFirstChar { it.uppercase() }) }, modifier = Modifier.testTag("snap point-$id"))
                     }
                 }
             }
@@ -229,7 +229,7 @@ private fun DemoSheet(demo: Demo, openedAt: Long, close: () -> Unit) {
                 }
             }
             Demo.Fit -> Column(Modifier.padding(horizontal = 24.dp, vertical = 8.dp).testTag("fit-body"), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text("Content determines this detent. Add options to watch the sheet resize.", color = Color(0xFF68728A))
+                Text("Content determines this snap point. Add options to watch the sheet resize.", color = Color(0xFF68728A))
                 repeat(if (extra) 8 else 2) { i -> Text("${i + 1}. Workspace option", Modifier.fillMaxWidth().background(Paper, RoundedCornerShape(12.dp)).padding(16.dp)) }
             }
             Demo.Form -> Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {

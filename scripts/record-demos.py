@@ -11,7 +11,7 @@ import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
-SCENARIOS = ['detents', 'chat', 'contentFit', 'stacked', 'heavyContent', 'scrollHandoff', 'tray']
+SCENARIOS = ['snapPoints', 'chat', 'contentFit', 'stacked', 'heavyContent', 'scrollHandoff', 'tray']
 PACKAGE = 'dev.better.sheet.sample'
 FRAMES = f'/sdcard/Android/data/{PACKAGE}/files/demo-frames'
 FRAME_MILLIS = 32  # DemoRecordingTest.FRAME_MILLIS
@@ -57,7 +57,7 @@ if __name__ == '__main__':
         run(str(ROOT / 'gradlew'), ':sample:assembleDebug', ':sample:assembleDebugAndroidTest', cwd=ROOT)
     run('adb', 'wait-for-device')
     run('adb', 'install', '-r', str(ROOT / 'samples/sample/build/outputs/apk/debug/sample-debug.apk'))
-    run('adb', 'install', '-r', str(ROOT / 'sample/build/outputs/apk/androidTest/debug/sample-debug-androidTest.apk'))
+    run('adb', 'install', '-r', str(ROOT / 'samples/sample/build/outputs/apk/androidTest/debug/sample-debug-androidTest.apk'))
     run('adb', 'shell', 'settings', 'put', 'secure', 'show_ime_with_hard_keyboard', '1')
     failures = []
     with tempfile.TemporaryDirectory() as work:

@@ -73,7 +73,7 @@ then remove or pop the Fragment in `onDismissed`.
 
 ## BetterModalSheet: a modal above your screen
 
-![Modal sheet opening, resizing between snap points, and closing](docs/videos/detents.gif)
+![Modal sheet opening, resizing between snap points, and closing](docs/videos/snapPoints.gif)
 
 Use this for a modal in an ordinary Compose screen. No Fragment or separate visibility
 boolean is needed.
