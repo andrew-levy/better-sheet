@@ -1,20 +1,38 @@
 # Changelog
 
-## Unreleased
-
-- Add standard Compose enter/exit transitions and `snapAnimationSpec` to all three sheet composables.
-- Rename animated `SheetState.animateTo` to `snapTo`, and the previous immediate `snapTo` to `jumpTo`.
-- Move animation configuration from `rememberSheetState` to the sheet composable. Rubber-band recovery
-  and live content resizing retain internal defaults.
-- Preserve mounted content during visibility transitions and wait for completed exits before dismissal.
-- Add a recorded animation gallery comparing spring, fade/tween, and slide + fade.
-
-
 All notable changes to Better Sheet are documented here. The project follows
 [Semantic Versioning](https://semver.org); while the version is 0.x, minor releases may change
 public API.
 
 ## [Unreleased]
+
+## [0.6.0] - 2026-10-19
+
+### Breaking API changes
+
+- Rename animated `SheetState.animateTo` to `snapTo`, and the previous immediate `snapTo` to `jumpTo`.
+- Move animation configuration from `rememberSheetState` to the sheet composable. Use
+  `enterTransition`, `exitTransition`, and `snapAnimationSpec` on all three sheet composables.
+  Rubber-band recovery and live content resizing retain internal defaults.
+
+### Added
+
+- Standard Compose enter/exit transitions, including fade, slide, scale, and combined transitions.
+- Recorded animation gallery comparing spring, fade/tween, and slide + fade.
+
+### Fixed
+
+- Measure the destination height before entry so sheets slide fully into view from the bottom,
+  including their first entrance and reopening.
+- Preserve mounted content during transitions and invoke dismissal only after the exit completes.
+- Release faded scrim touches during exit and remove the dismissal ripple.
+- Remove the hard shadow cutoff beside rounded tray corners.
+
+### Changed
+
+- Simplify the README, lead with demos, and improve GIF preview quality.
+- Group sample apps under `samples/` and record all demos on every source push, committing
+  recordings only after Android validation succeeds.
 
 ## [0.5.0] - 2026-10-18
 
@@ -139,3 +157,5 @@ Initial public release.
 [0.5.0]: https://github.com/andrew-levy/better-sheet/releases/tag/0.5.0
 [0.4.0]: https://github.com/andrew-levy/better-sheet/releases/tag/0.4.0
 
+
+[0.6.0]: https://github.com/andrew-levy/better-sheet/releases/tag/0.6.0

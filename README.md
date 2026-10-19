@@ -27,11 +27,10 @@ Click a preview for the full-resolution MP4. More demos: [animations](docs/video
 maven("https://jitpack.io")
 
 // app/build.gradle.kts
-implementation("com.github.andrew-levy:better-sheet:0.5.0")
+implementation("com.github.andrew-levy:better-sheet:0.6.0")
 ```
 
-The dependency above is the latest release. This branch includes the upcoming animation API;
-see [migration notes](docs/USAGE.md#animation-behavior-and-migration) for changes from 0.5.0.
+See [migration notes](docs/USAGE.md#animation-behavior-and-migration) when upgrading from 0.5.0.
 Examples use `dev.better.sheet.*`; app-specific content functions are placeholders.
 
 ## Your first sheet
