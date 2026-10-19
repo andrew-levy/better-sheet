@@ -30,6 +30,8 @@ class TrayRenderingTest {
         val initialized = java.util.concurrent.atomic.AtomicBoolean(false)
         var presentation by mutableStateOf<SheetPresentation>(SheetPresentation.Tray())
         var surfaceBottom = 0f
+        var surfaceLeft = 0f
+        var surfaceRight = 0f
         var footerBottom = 0f
         var footerCenter = 0f
         ActivityScenario.launch(MainActivity::class.java).use { activity ->
@@ -42,7 +44,12 @@ class TrayRenderingTest {
                     listOf(SheetSnapPoint.fraction("medium", .6f), SheetSnapPoint.expanded()),
                     presentation = presentation,
                     containerColor = Color.Cyan,
-                    surfaceModifier = Modifier.onGloballyPositioned { surfaceBottom = it.boundsInWindow().bottom },
+                    surfaceModifier = Modifier.onGloballyPositioned {
+                        val bounds = it.boundsInWindow()
+                        surfaceBottom = bounds.bottom
+                        surfaceLeft = bounds.left
+                        surfaceRight = bounds.right
+                    },
                     bodyMode = SheetBodyMode.Fill,
                     header = { Box(Modifier.fillMaxWidth().height(48.dp).background(Color.Magenta)) },
                     footer = {
@@ -91,12 +98,20 @@ class TrayRenderingTest {
                                 if (target == "medium" && style is SheetPresentation.Tray) {
                                     val y = surfaceBottom.toInt() + 2
                                     if (y < shot.height) {
-                                        // Uniform host + scrim: pixels below the tray should match
-                                        // untouched background on the same scanline, not a gray shelf.
+                                        // A floating tray's shadow must fade below its bottom edge.
+                                        // Cutting it off here creates straight seams beside the corners.
                                         val below = shot.getPixel(footerCenter.toInt(), y)
                                         val outside = shot.getPixel(2, y)
-                                        assertEquals("Tray shadow formed a lip below the bottom edge",
-                                            android.graphics.Color.green(outside).toFloat(), android.graphics.Color.green(below).toFloat(), 2f)
+                                        assertTrue("Floating tray shadow was cut off at the bottom edge",
+                                            android.graphics.Color.green(below) < android.graphics.Color.green(outside) - 2)
+                                        for (edge in listOf(surfaceLeft, surfaceRight - 1)) {
+                                            val x = edge.toInt().coerceIn(0, shot.width - 1)
+                                            val above = shot.getPixel(x, surfaceBottom.toInt() - 1)
+                                            val under = shot.getPixel(x, surfaceBottom.toInt() + 1)
+                                            assertEquals("Shadow has a hard seam beside a rounded tray corner",
+                                                android.graphics.Color.green(above).toFloat(),
+                                                android.graphics.Color.green(under).toFloat(), 3f)
+                                        }
                                     }
                                 }
                                 if (target == "expanded" || style == SheetPresentation.Standard) {

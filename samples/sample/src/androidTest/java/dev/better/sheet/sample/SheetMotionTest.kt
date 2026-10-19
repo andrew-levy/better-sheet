@@ -11,6 +11,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -18,12 +20,78 @@ import dev.better.sheet.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.UiDevice
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 
 class SheetMotionTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+
+    @Test fun inlineCanReopenBeforeExitFinishes() = reopenBeforeExitFinishes(modal = false)
+
+    @Test fun modalCanReopenBeforeExitFinishes() = reopenBeforeExitFinishes(modal = true)
+
+    private fun reopenBeforeExitFinishes(modal: Boolean) {
+        lateinit var state: SheetState
+        lateinit var scope: CoroutineScope
+        var opens = 0
+        var dismissals = 0
+        var tapX = 0
+        var tapY = 0
+        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+        compose.runOnUiThread { compose.activity.setContent {
+            state = rememberSheetState("medium")
+            scope = rememberCoroutineScope()
+            Box(Modifier.fillMaxSize()) {
+                Box(Modifier.fillMaxWidth().padding(top = 48.dp).height(64.dp)
+                    .onGloballyPositioned {
+                        tapX = it.boundsInWindow().center.x.toInt()
+                        tapY = it.boundsInWindow().center.y.toInt()
+                    }.clickable {
+                        opens++
+                        scope.launch { state.show() }
+                    })
+                val points = listOf(SheetSnapPoint.fraction("medium", .4f))
+                if (modal) {
+                    BetterModalSheet(state, points,
+                        exitTransition = slideOutVertically(tween(2000)) { it },
+                        onDismissed = { dismissals++ }) { Spacer(Modifier.height(80.dp)) }
+                } else {
+                    BetterSheet(state, points,
+                        exitTransition = slideOutVertically(tween(2000)) { it },
+                        onDismissed = { dismissals++ }) { Spacer(Modifier.height(80.dp)) }
+                }
+            }
+        } }
+        compose.waitForIdle()
+        compose.mainClock.autoAdvance = false
+        try {
+            // Real window input verifies the modal's FLAG_NOT_TOUCHABLE handoff too.
+            device.click(tapX, tapY)
+            compose.mainClock.advanceTimeBy(48)
+            compose.waitForIdle()
+            assertNull(state.targetSnapPoint)
+            device.click(tapX, tapY)
+            compose.mainClock.advanceTimeBy(208)
+            compose.waitForIdle()
+            assertEquals("A second scrim tap must not reopen the background yet", 0, opens)
+            assertTrue("The long exit is deliberately still running", state.isAnimationRunning)
+            device.click(tapX, tapY)
+            compose.mainClock.advanceTimeByFrame()
+            compose.waitForIdle()
+            assertEquals("Faded scrim must release the reopen button", 1, opens)
+            assertEquals("medium", state.targetSnapPoint)
+            compose.mainClock.advanceTimeBy(3000)
+            compose.waitForIdle()
+            assertEquals("medium", state.currentSnapPoint)
+            assertTrue(state.isVisible)
+            assertEquals("Interrupted exit must not dismiss the reopened sheet", 0, dismissals)
+        } finally {
+            compose.mainClock.autoAdvance = true
+        }
+    }
 
     @Test fun trayMorphsAtIntermediateFramesAndReversesWithoutRemounting() {
         lateinit var state: SheetState

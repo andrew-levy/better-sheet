@@ -49,8 +49,11 @@ class AnimationCustomizationTest {
         compose.waitForIdle()
         compose.mainClock.autoAdvance = false
         compose.runOnUiThread { scope.launch { state.show() } }
-        compose.mainClock.advanceTimeBy(160)
-        compose.waitForIdle()
+        // Let Android measure the entrance between clock frames.
+        repeat(10) {
+            compose.mainClock.advanceTimeByFrame()
+            compose.waitForIdle()
+        }
         val early = compose.onNodeWithTag("fade-header").getUnclippedBoundsInRoot().top
         assertTrue(state.isAnimationRunning)
         fun sheetRed(): Float {

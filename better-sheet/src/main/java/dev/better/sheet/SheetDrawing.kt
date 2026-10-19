@@ -36,11 +36,11 @@ internal fun Modifier.sheetNavigationCover(color: Color, heightPx: Float): Modif
     if (height > 0f) drawRect(color, Offset(0f, size.height - height), Size(size.width, height))
 }
 
-/** Keep depth above/beside the surface without tinting the navigation area below it. */
-internal fun Modifier.sheetSurfaceShadow(elevation: Dp, shape: Shape): Modifier =
-    drawWithContent {
+/** Floating trays need a complete shadow; edge-attached sheets stop at the navigation area. */
+internal fun Modifier.sheetSurfaceShadow(elevation: Dp, shape: Shape, floating: Boolean): Modifier =
+    (if (floating) this else drawWithContent {
         val spread = elevation.toPx() * 3f
         clipRect(left = -spread, top = -spread, right = size.width + spread, bottom = size.height) {
             this@drawWithContent.drawContent()
         }
-    }.shadow(elevation, shape, clip = false)
+    }).shadow(elevation, shape, clip = false)

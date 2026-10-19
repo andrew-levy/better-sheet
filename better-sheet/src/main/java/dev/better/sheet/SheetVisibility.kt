@@ -34,6 +34,7 @@ internal fun rememberSheetVisibilityScope(state: SheetState): AnimatedVisibility
 /** Measure hidden content without placing it: no drawing, hit targets or accessibility nodes. */
 internal fun Modifier.sheetPresentationPlacement(state: SheetState): Modifier = layout { measurable, constraints ->
     val child = measurable.measure(constraints)
+    state.measuredPresentationLayoutGeneration = state.presentationLayoutGeneration
     layout(child.width, child.height) {
         if (state.presentationActive && state.isVisible) child.place(0, 0)
     }
