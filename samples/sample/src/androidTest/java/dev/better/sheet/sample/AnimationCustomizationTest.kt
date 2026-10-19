@@ -76,8 +76,13 @@ class AnimationCustomizationTest {
                 if (!initiallyVisible || opening > 0) {
                     compose.runOnUiThread { scope.launch { state.show() } }
                 }
-                compose.mainClock.advanceTimeBy(96)
-                compose.waitForIdle()
+                // Entry waits for an Android measure pass before creating its transition.
+                // A single clock jump runs all Compose frames before that pass, leaving
+                // the sheet correctly hidden when the screenshot is taken.
+                repeat(6) {
+                    compose.mainClock.advanceTimeByFrame()
+                    compose.waitForIdle()
+                }
                 // At this point the header is still below the window. boundsInWindow()
                 // clips it to an empty rectangle at zero; inspect visible surface pixels.
                 val earlyTop = renderedBlueTop()
