@@ -1,5 +1,10 @@
 package dev.better.sheet
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.AnimationSpec
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -46,9 +51,6 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.ensureActive
-import kotlin.coroutines.coroutineContext
 import kotlin.math.roundToInt
 
 /**
@@ -76,6 +78,9 @@ public fun BetterModalSheet(
     surfaceModifier: Modifier = Modifier,
     stackState: SheetStackState? = null,
     presentation: SheetPresentation = SheetPresentation.Standard,
+    enterTransition: EnterTransition = slideInVertically(defaultSheetSpring(IntOffset(1, 1))) { it },
+    exitTransition: ExitTransition = slideOutVertically(defaultSheetSpring(IntOffset(1, 1))) { it },
+    snapAnimationSpec: AnimationSpec<Float> = defaultSheetSpring(),
     content: @Composable ColumnScope.() -> Unit,
 ) {
     SideEffect { state.prepareModalPresentation() }
@@ -114,14 +119,8 @@ public fun BetterModalSheet(
             // Preserving that choice is required for legacy IME inset delivery.
         }
         LaunchedEffect(state) {
-            if (state.initialPresentationPending) {
-                state.initialPresentationPending = false
-                try { state.enter() } catch (interrupted: CancellationException) { coroutineContext.ensureActive() }
-            }
-        }
-        LaunchedEffect(state) {
             snapshotFlow {
-                state.hasPresented && !state.modalAwaitingPresentation && state.targetSnapPoint == null && !state.isVisible &&
+                state.hasPresented && !state.modalAwaitingPresentation && state.targetSnapPoint == null && state.currentSnapPoint == null && !state.isVisible &&
                     !state.isAnimationRunning && !state.dragInProgress
             }.first { it }
             state.finishModalPresentation()
@@ -130,7 +129,7 @@ public fun BetterModalSheet(
         CompositionLocalProvider(LocalSheetStackEntry provides entry) {
             BetterSheetHost(
                 state, snapPoints, modifier, behavior, bodyMode, title, maxWidth, topMargin,
-                containerColor, contentColor, scrimColor, shape, dragHandle, header, footer, surfaceModifier, presentation, content,
+                containerColor, contentColor, scrimColor, shape, dragHandle, header, footer, surfaceModifier, presentation, enterTransition, exitTransition, snapAnimationSpec, content,
             )
         }
     }
@@ -156,6 +155,9 @@ public fun BetterSheetHost(
     footer: @Composable (() -> Unit)? = null,
     surfaceModifier: Modifier = Modifier,
     presentation: SheetPresentation = SheetPresentation.Standard,
+    enterTransition: EnterTransition = slideInVertically(defaultSheetSpring(IntOffset(1, 1))) { it },
+    exitTransition: ExitTransition = slideOutVertically(defaultSheetSpring(IntOffset(1, 1))) { it },
+    snapAnimationSpec: AnimationSpec<Float> = defaultSheetSpring(),
     content: @Composable ColumnScope.() -> Unit,
 ) {
     require(snapPoints.isNotEmpty() && snapPoints.map { it.id }.distinct().size == snapPoints.size)
@@ -164,6 +166,17 @@ public fun BetterSheetHost(
     }
     require(maxWidth.value.isFinite() && maxWidth > 0.dp)
     require(topMargin.value.isFinite() && topMargin >= 0.dp)
+    SideEffect {
+        state.preparePresentation()
+        state.configureAnimations(snapAnimationSpec)
+    }
+    LaunchedEffect(state) {
+        if (state.initialPresentationPending) {
+            state.initialPresentationPending = false
+            state.enter()
+        }
+    }
+    val visibilityScope = rememberSheetVisibilityScope(state)
     val deviceCornerRadius = rememberSheetDeviceCornerRadius()
     val hostView = LocalView.current
     var hostReachesWindowEdges by remember { mutableStateOf(false) }
@@ -184,7 +197,7 @@ public fun BetterSheetHost(
             if (!contentInitialized || !state.hasPresented) {
                 animatedContentHeight.snapTo(naturalBodyHeight.toFloat())
                 contentInitialized = true
-            } else animatedContentHeight.animateTo(naturalBodyHeight.toFloat(), state.animationSpec)
+            } else animatedContentHeight.animateTo(naturalBodyHeight.toFloat(), defaultSheetSpring())
         }
     }
     val isVisible by remember(state) { derivedStateOf { state.isVisible } }
@@ -193,18 +206,18 @@ public fun BetterSheetHost(
     val imeInset = WindowInsets.ime.getBottom(density)
     val imeVisible = imeInset > navInset
     val bottomInset = if (behavior.keyboardBehavior == SheetKeyboardBehavior.Ignore) navInset else maxOf(navInset, imeInset)
-    val fling = AnchoredDraggableDefaults.flingBehavior(state.anchored, animationSpec = state.animationSpec)
+    val fling = AnchoredDraggableDefaults.flingBehavior(state.anchored, animationSpec = snapAnimationSpec)
     val velocityThreshold = with(density) { 125.dp.toPx() }
     val backgroundTouchSlop = with(density) { 24.dp.toPx() }
     val releaseBackground by remember(state, backgroundTouchSlop) {
         derivedStateOf {
             val g = state.geometry ?: return@derivedStateOf false
-            releasesBackgroundPointer(
+            !state.presentationActive || (!state.presentationExiting && releasesBackgroundPointer(
                 targetHidden = state.hasPresented && state.targetSnapPoint == null,
                 dragInProgress = state.dragInProgress,
                 visibleHeight = (g.availableHeight - state.offsetOrHidden()).coerceAtLeast(0f),
                 slop = backgroundTouchSlop,
-            )
+            ))
         }
     }
     val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
@@ -227,7 +240,7 @@ public fun BetterSheetHost(
                 state.expand()
             } else if (!imeVisible) {
                 beforeIme?.let { id ->
-                    state.geometry?.let { g -> if (g.canonical(id) in g.offsets && state.isVisible) state.animateTo(id) }
+                    state.geometry?.let { g -> if (g.canonical(id) in g.offsets && state.isVisible) state.snapTo(id) }
                 }
                 beforeIme = null
             }
@@ -267,7 +280,7 @@ public fun BetterSheetHost(
                         val visible = geometry.availableHeight - state.offsetOrHidden()
                         val smallestHeight = geometry.availableHeight - geometry.offsets.getValue(geometry.smallest)
                         val fraction = scrimDragFraction(visible, smallestHeight, behavior.scrimFollowsDrag)
-                        drawRect(scrimColor.copy(alpha = scrimColor.alpha * fraction))
+                        drawRect(scrimColor.copy(alpha = scrimColor.alpha * fraction * state.presentationFraction))
                     }
                 }
                 .then(when {
@@ -290,7 +303,7 @@ public fun BetterSheetHost(
         val morph by remember(state, tray, availablePx) {
             derivedStateOf {
                 if (tray == null) 0f else trayMorphFraction(
-                    availablePx - state.offsetOrHidden(), availablePx, tray.morphStartFraction,
+                    availablePx - state.layoutOffset(), availablePx, tray.morphStartFraction,
                 )
             }
         }
@@ -307,96 +320,103 @@ public fun BetterSheetHost(
             topEnd = radius * (1f - morph) + tray.expandedCornerRadius * morph,
             bottomStart = radius * (1f - morph), bottomEnd = radius * (1f - morph),
         )
-        if (tray == null && isVisible && navInset > 0 && !keyboardCoversNav) {
-            // The sheet sits on the bottom edge. Continue its color under the navigation
-            // bar so the bar does not pick up a separate, darker system scrim.
-            Box(Modifier.align(Alignment.BottomCenter)
+        // One transition wraps the surface and its navigation-bar continuation together.
+        // The body remains composed and measured while hidden, preserving content state.
+        Box(Modifier.align(Alignment.BottomCenter).then(with(visibilityScope) {
+            Modifier.animateEnterExit(enterTransition, exitTransition, "Sheet presentation")
+        }).sheetPresentationPlacement(state)) {
+            if (tray == null && (isVisible || state.presentationExiting) && navInset > 0 && !keyboardCoversNav) {
+                // The sheet sits on the bottom edge. Continue its color under the navigation
+                // bar so the bar does not pick up a separate, darker system scrim.
+                Box(Modifier.align(Alignment.BottomCenter)
+                    .downwardRubber(state)
+                    .windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout).only(WindowInsetsSides.Horizontal))
+                    .widthIn(max = maxWidth).fillMaxWidth()
+                    .height(with(density) { navInset.toDp() })
+                    .background(containerColor))
+            }
+            val sheetSurfaceModifier = Modifier
+                .align(Alignment.BottomCenter)
                 .downwardRubber(state)
+                .padding(bottom = with(density) { (bottomInset - navExtension).toDp() } + trayGap)
                 .windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout).only(WindowInsetsSides.Horizontal))
                 .widthIn(max = maxWidth).fillMaxWidth()
-                .height(with(density) { navInset.toDp() })
-                .background(containerColor))
-        }
-        val sheetSurfaceModifier = Modifier
-            .align(Alignment.BottomCenter)
-            .downwardRubber(state)
-            .padding(bottom = with(density) { (bottomInset - navExtension).toDp() } + trayGap)
-            .windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout).only(WindowInsetsSides.Horizontal))
-            .widthIn(max = maxWidth).fillMaxWidth()
-            .padding(horizontal = traySide)
-            .then(surfaceModifier)
-            .sheetSurfaceShadow(if (tray == null) 16.dp else 16.dp * (1f - morph), surfaceShape)
-            .sheetDrawClip { surfaceShape }
-            .sheetNavigationCover(containerColor, navExtension)
+                .padding(horizontal = traySide)
+                .then(surfaceModifier)
+                .sheetSurfaceShadow(if (tray == null) 16.dp else 16.dp * (1f - morph), surfaceShape)
+                .sheetDrawClip { surfaceShape }
+                .sheetNavigationCover(containerColor, navExtension)
 
-        Layout(modifier = sheetSurfaceModifier, content = {
-            Layout(modifier = Modifier.fillMaxWidth()
-                .background(containerColor)
-                .padding(bottom = with(density) { navExtension.toDp() })
-                .then(if (behavior.draggable) Modifier.nestedScroll(nested).pointerInput(nested) {
-                    awaitEachGesture {
-                        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                        nested.beginGesture()
-                    }
-                } else Modifier)
-                .semantics {
-                    if (!isVisible) hideFromAccessibility()
-                    paneTitle = title
-                    isTraversalGroup = true
-                    stateDescription = state.currentSnapPoint ?: "Hidden"
-                    if (behavior.dismissOnDrag) dismiss { scope.launch { state.hide() }; true }
-                    expand { scope.launch { state.expand() }; true }
-                    collapse { scope.launch { state.collapse() }; true }
-                }, content = {
-                // Foundation only: no Material theme is imposed on consumers.
-                CompositionLocalProvider(LocalSheetContentColor provides contentColor) {
-                    Column(Modifier.fillMaxWidth().onSizeChanged { headerHeight = it.height; headerMeasured = true }
-                        .anchoredDraggable(
-                            state.anchored,
-                            Orientation.Vertical,
-                            enabled = behavior.draggable,
-                            overscrollEffect = edgeOverscroll,
-                            flingBehavior = fling,
-                        )) {
-                        dragHandle?.invoke()
-                        header?.invoke()
-                    }
-                    if (bodyMode == SheetBodyMode.Scroll) {
-                        val scroll = rememberScrollState()
-                        Box(Modifier.fillMaxWidth().clipToBoundsForSheet().verticalScroll(scroll)) {
-                            Column(Modifier.fillMaxWidth().onSizeChanged { naturalBodyHeight = it.height; bodyMeasured = true }, content = content)
+            Layout(modifier = sheetSurfaceModifier, content = {
+                Layout(modifier = Modifier.fillMaxWidth()
+                    .background(containerColor)
+                    .padding(bottom = with(density) { navExtension.toDp() })
+                    .then(if (behavior.draggable) Modifier.nestedScroll(nested).pointerInput(nested) {
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                            state.catchExitingPresentation()
+                            nested.beginGesture()
                         }
-                    } else {
-                        Column(Modifier.fillMaxWidth().clipToBoundsForSheet(), content = content)
+                    } else Modifier)
+                    .semantics {
+                        if (!isVisible) hideFromAccessibility()
+                        paneTitle = title
+                        isTraversalGroup = true
+                        stateDescription = state.currentSnapPoint ?: "Hidden"
+                        if (behavior.dismissOnDrag) dismiss { scope.launch { state.hide() }; true }
+                        expand { scope.launch { state.expand() }; true }
+                        collapse { scope.launch { state.collapse() }; true }
+                    }, content = {
+                    // Foundation only: no Material theme is imposed on consumers.
+                    CompositionLocalProvider(LocalSheetContentColor provides contentColor) {
+                        Column(Modifier.fillMaxWidth().onSizeChanged { headerHeight = it.height; headerMeasured = true }
+                            .anchoredDraggable(
+                                state.anchored,
+                                Orientation.Vertical,
+                                enabled = behavior.draggable,
+                                overscrollEffect = edgeOverscroll,
+                                flingBehavior = fling,
+                            )) {
+                            dragHandle?.invoke()
+                            header?.invoke()
+                        }
+                        if (bodyMode == SheetBodyMode.Scroll) {
+                            val scroll = rememberScrollState()
+                            Box(Modifier.fillMaxWidth().clipToBoundsForSheet().verticalScroll(scroll)) {
+                                Column(Modifier.fillMaxWidth().onSizeChanged { naturalBodyHeight = it.height; bodyMeasured = true }, content = content)
+                            }
+                        } else {
+                            Column(Modifier.fillMaxWidth().clipToBoundsForSheet(), content = content)
+                        }
+                        Box(Modifier.fillMaxWidth().onSizeChanged { footerHeight = it.height; footerMeasured = true }) { footer?.invoke() }
                     }
-                    Box(Modifier.fillMaxWidth().onSizeChanged { footerHeight = it.height; footerMeasured = true }) { footer?.invoke() }
+                }) { parts, bounds ->
+                    // A small window or tall header must not consume a fitting footer's space.
+                    // Upward stretch grows this height from the top. The footer stays on the bottom edge.
+                    val width = bounds.maxWidth
+                    val height = bounds.maxHeight
+                    val footerPart = parts[2].measure(Constraints(minWidth = width, maxWidth = width, maxHeight = height))
+                    val headerPart = parts[0].measure(Constraints(minWidth = width, maxWidth = width, maxHeight = height - footerPart.height))
+                    val bodyHeight = (height - footerPart.height - headerPart.height).coerceAtLeast(0)
+                    val bodyPart = parts[1].measure(Constraints.fixed(width, bodyHeight))
+                    layout(width, height) {
+                        headerPart.place(0, 0)
+                        bodyPart.place(0, headerPart.height)
+                        footerPart.place(0, height - footerPart.height)
+                    }
                 }
-            }) { parts, bounds ->
-                // A small window or tall header must not consume a fitting footer's space.
-                // Upward stretch grows this height from the top. The footer stays on the bottom edge.
-                val width = bounds.maxWidth
-                val height = bounds.maxHeight
-                val footerPart = parts[2].measure(Constraints(minWidth = width, maxWidth = width, maxHeight = height))
-                val headerPart = parts[0].measure(Constraints(minWidth = width, maxWidth = width, maxHeight = height - footerPart.height))
-                val bodyHeight = (height - footerPart.height - headerPart.height).coerceAtLeast(0)
-                val bodyPart = parts[1].measure(Constraints.fixed(width, bodyHeight))
-                layout(width, height) {
-                    headerPart.place(0, 0)
-                    bodyPart.place(0, headerPart.height)
-                    footerPart.place(0, height - footerPart.height)
-                }
+            }) { measurables, constraints ->
+                // Offset reads happen in measurement, not composition, on each drag/animation frame.
+                val visibleHeight = (availablePx - state.layoutOffset()).coerceIn(0f, availablePx)
+                val stretch = upwardStretch(state.rubberTranslation)
+                val base = if (chrome == 0) availablePx else visibleHeight.coerceAtLeast(chrome.toFloat().coerceAtMost(availablePx))
+                // Compensate the external gap/extension so the top edge stays on its detent.
+                val adjustment = navExtension - trayGap.toPx()
+                val childHeight = (base + stretch + adjustment).roundToInt().coerceAtLeast(0)
+                val visible = (visibleHeight + stretch + adjustment).roundToInt().coerceAtLeast(0)
+                val child = measurables.single().measure(Constraints.fixed(constraints.maxWidth, childHeight))
+                layout(constraints.maxWidth, visible) { child.place(0, 0) }
             }
-        }) { measurables, constraints ->
-            // Offset reads happen in measurement, not composition, on each drag/animation frame.
-            val visibleHeight = (availablePx - state.offsetOrHidden()).coerceIn(0f, availablePx)
-            val stretch = upwardStretch(state.rubberTranslation)
-            val base = if (chrome == 0) availablePx else visibleHeight.coerceAtLeast(chrome.toFloat().coerceAtMost(availablePx))
-            // Compensate the external gap/extension so the top edge stays on its detent.
-            val adjustment = navExtension - trayGap.toPx()
-            val childHeight = (base + stretch + adjustment).roundToInt().coerceAtLeast(0)
-            val visible = (visibleHeight + stretch + adjustment).roundToInt().coerceAtLeast(0)
-            val child = measurables.single().measure(Constraints.fixed(constraints.maxWidth, childHeight))
-            layout(constraints.maxWidth, visible) { child.place(0, 0) }
         }
     }
 }
@@ -438,3 +458,4 @@ private fun Window.clearSheetSystemBarChrome() {
         isNavigationBarContrastEnforced = false
     }
 }
+

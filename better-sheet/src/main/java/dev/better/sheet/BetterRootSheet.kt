@@ -1,5 +1,10 @@
 package dev.better.sheet
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
@@ -8,10 +13,9 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 
 /**
  * Always-mounted, in-place sheet. Suitable as a Fragment's ComposeView root.
@@ -40,6 +44,9 @@ public fun BetterSheet(
     footer: @Composable (() -> Unit)? = null,
     surfaceModifier: Modifier = Modifier,
     presentation: SheetPresentation = SheetPresentation.Standard,
+    enterTransition: EnterTransition = slideInVertically(defaultSheetSpring(IntOffset(1, 1))) { it },
+    exitTransition: ExitTransition = slideOutVertically(defaultSheetSpring(IntOffset(1, 1))) { it },
+    snapAnimationSpec: AnimationSpec<Float> = defaultSheetSpring(),
     content: @Composable ColumnScope.() -> Unit,
 ) {
     SideEffect { state.preparePresentation() }
@@ -52,13 +59,12 @@ public fun BetterSheet(
             keyboard?.hide()
         }
     }
-    val dismissSlop = with(LocalDensity.current) { 24.dp.toPx() }
     LaunchedEffect(state) {
-        if (state.initiallyVisible) launch { state.enter() }
-        snapshotFlow { state.releaseDismissed(dismissSlop) }.collect { hidden -> if (hidden) dismissed() }
+        snapshotFlow { state.releaseDismissed() }.collect { hidden -> if (hidden) dismissed() }
     }
     BetterSheetHost(
         state, snapPoints, modifier, behavior, bodyMode, title, maxWidth, topMargin,
-        containerColor, contentColor, scrimColor, shape, dragHandle, header, footer, surfaceModifier, presentation, content,
+        containerColor, contentColor, scrimColor, shape, dragHandle, header, footer, surfaceModifier, presentation, enterTransition, exitTransition, snapAnimationSpec, content,
     )
 }
+

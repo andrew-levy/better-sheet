@@ -79,6 +79,16 @@ class DemoRecordingTest {
         pause()
     }
 
+    @Test fun animations() {
+        open("Animations")
+        for (preset in listOf("Spring", "Fade", "SlideFade")) {
+            compose.onNodeWithTag("animation-open-$preset").performClick(); pause(1200)
+            compose.onNodeWithTag("animation-expanded").performClick(); pause(1200)
+            compose.onNodeWithTag("animation-medium").performClick(); pause(1200)
+            compose.onNodeWithTag("animation-close").performClick(); pause(1200)
+        }
+    }
+
     @Test fun snapPoints() {
         open("SnapPoints")
         listOf("peek", "expanded", "medium").forEach { compose.onNodeWithTag("snap-point-$it").performClick(); pause() }
@@ -171,3 +181,4 @@ class DemoRecordingTest {
         const val FRAME_MILLIS = 32L
     }
 }
+

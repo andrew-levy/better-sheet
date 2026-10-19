@@ -1,0 +1,25 @@
+{
+  "name": "better-sheet",
+  "private": true,
+  "description": "npm script shortcuts for Gradle (no Node dependencies)",
+  "scripts": {
+    "build": "./gradlew build",
+    "clean": "./gradlew clean",
+    "gradle": "./gradlew",
+    "test": "./gradlew :better-sheet:test",
+    "test:unit": "./gradlew test",
+    "test:device": "./gradlew :sample:connectedDebugAndroidTest",
+    "library:build": "./gradlew :better-sheet:assemble",
+    "library:test": "./gradlew :better-sheet:test",
+    "sample": "npm run sample:run",
+    "sample:build": "./gradlew :sample:assembleDebug",
+    "sample:install": "./gradlew :sample:installDebug",
+    "sample:run": "./gradlew :sample:installDebug && adb shell am start -n dev.better.sheet.sample/.MainActivity",
+    "findmy": "npm run findmy:run",
+    "findmy:build": "./gradlew :findmy:assembleDebug",
+    "findmy:install": "./gradlew :findmy:installDebug",
+    "findmy:run": "./gradlew :findmy:installDebug && adb shell am start -n dev.better.sheet.findmy/.FindMyActivity",
+    "publish:local": "./gradlew :better-sheet:publishToMavenLocal",
+    "record:demos": "python3 scripts/record-demos.py"
+  }
+}

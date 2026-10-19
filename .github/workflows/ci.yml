@@ -69,7 +69,7 @@ jobs:
             adb shell settings put secure show_ime_with_hard_keyboard 1
             adb shell settings put global hide_error_dialogs 1
             adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS
-            ./gradlew :sample:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.better.sheet.sample.SheetUiTest,dev.better.sheet.sample.SheetMotionTest,dev.better.sheet.sample.FragmentSheetTest,dev.better.sheet.sample.HeavyContentMotionTest,dev.better.sheet.sample.TrayRenderingTest
+            ./gradlew :sample:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.better.sheet.sample.SheetUiTest,dev.better.sheet.sample.SheetMotionTest,dev.better.sheet.sample.FragmentSheetTest,dev.better.sheet.sample.HeavyContentMotionTest,dev.better.sheet.sample.TrayRenderingTest,dev.better.sheet.sample.AnimationCustomizationTest
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -77,7 +77,7 @@ jobs:
           path: samples/sample/build/reports/androidTests/
   demos:
     env:
-      SCENARIOS: snapPoints chat contentFit stacked heavyContent scrollHandoff tray
+      SCENARIOS: snapPoints chat contentFit stacked heavyContent scrollHandoff tray animations
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
@@ -152,7 +152,7 @@ jobs:
         if: steps.current.outputs.publish == 'true'
         env:
           RECORDINGS: ${{ runner.temp }}/demo-videos
-          SCENARIOS: snapPoints chat contentFit stacked heavyContent scrollHandoff tray
+          SCENARIOS: snapPoints chat contentFit stacked heavyContent scrollHandoff tray animations
           BRANCH_NAME: ${{ github.ref_name }}
         run: |
           python3 - <<'PY'
@@ -203,3 +203,4 @@ jobs:
             await github.rest.actions.createWorkflowDispatch({
               ...context.repo, workflow_id: 'release.yml', ref: 'main', inputs: { version }
             });
+

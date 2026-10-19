@@ -1,6 +1,8 @@
 package dev.better.sheet.sample
 
 import androidx.activity.compose.setContent
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
@@ -28,9 +30,12 @@ class SheetMotionTest {
         lateinit var scope: CoroutineScope
         var mounts = 0
         compose.runOnUiThread { compose.activity.setContent {
-            state = rememberSheetState("medium", tween(400))
+            state = rememberSheetState("medium")
             scope = rememberCoroutineScope()
             BetterSheet(state, listOf(SheetSnapPoint.fraction("medium", .6f), SheetSnapPoint.expanded()),
+                snapAnimationSpec = tween(400),
+                enterTransition = slideInVertically(tween(400)) { it },
+                exitTransition = slideOutVertically(tween(400)) { it },
                 maxWidth = 2000.dp,
                 presentation = SheetPresentation.Tray(matchDeviceCorners = false),
                 surfaceModifier = Modifier.testTag("tray-surface"),
@@ -68,7 +73,7 @@ class SheetMotionTest {
         compose.runOnUiThread { scope.launch { state.hide() } }
         compose.mainClock.advanceTimeBy(600)
         compose.waitForIdle()
-        assertFalse(state.isVisible)
+        assertFalse("Exit must finish: current=${state.currentSnapPoint}, target=${state.targetSnapPoint}, progress=${state.progress}, running=${state.isAnimationRunning}", state.isVisible)
         assertEquals(1, mounts)
         compose.mainClock.autoAdvance = true
     }
@@ -273,11 +278,12 @@ class SheetMotionTest {
         lateinit var scope: CoroutineScope
         lateinit var list: androidx.compose.foundation.lazy.LazyListState
         compose.runOnUiThread { compose.activity.setContent {
-            state = rememberSheetState("medium", tween(320))
+            state = rememberSheetState("medium")
             scope = rememberCoroutineScope()
             list = androidx.compose.foundation.lazy.rememberLazyListState(20)
             BetterSheet(state, listOf(SheetSnapPoint.fraction("medium", .5f), SheetSnapPoint.expanded()),
                 bodyMode = SheetBodyMode.Fill,
+                snapAnimationSpec = tween(320),
                 header = { Spacer(Modifier.fillMaxWidth().height(48.dp).testTag("moving-header")) }) {
                 androidx.compose.foundation.lazy.LazyColumn(state = list, modifier = Modifier.fillMaxSize()) {
                     items(100) { index -> Spacer(Modifier.fillMaxWidth().height(56.dp).testTag("row-$index")) }
@@ -366,9 +372,12 @@ class SheetMotionTest {
         var dismissed = 0
         var compositions = 0
         compose.runOnUiThread { compose.activity.setContent {
-            state = rememberSheetState("medium", tween(320), initiallyVisible = false)
+            state = rememberSheetState("medium", initiallyVisible = false)
             scope = rememberCoroutineScope()
-            BetterSheet(state, listOf(SheetSnapPoint.fraction("medium", .6f)), onDismissed = { dismissed++ }) {
+            BetterSheet(state, listOf(SheetSnapPoint.fraction("medium", .6f)),
+                enterTransition = slideInVertically(tween(320)) { it },
+                exitTransition = slideOutVertically(tween(320)) { it },
+                onDismissed = { dismissed++ }) {
                 DisposableEffect(Unit) { compositions++; onDispose {} }
                 Spacer(Modifier.height(120.dp))
             }
@@ -383,7 +392,8 @@ class SheetMotionTest {
         assertTrue("Entry must have intermediate frames", early > 0f && early < .6f)
         compose.mainClock.advanceTimeBy(120)
         compose.waitForIdle()
-        assertTrue(state.progress > early && state.progress < .6f)
+        assertTrue(state.progress > early)
+        assertTrue("Entry remains active until its slide finishes", state.isAnimationRunning)
         compose.mainClock.advanceTimeBy(600)
         compose.waitForIdle()
         assertEquals(.6f, state.progress, .01f)
@@ -391,7 +401,7 @@ class SheetMotionTest {
         compose.mainClock.advanceTimeBy(160)
         compose.waitForIdle()
         assertEquals("Dismiss callback waits for the exit", 0, dismissed)
-        assertTrue(state.progress > 0f && state.progress < .6f)
+        assertTrue(state.isAnimationRunning)
         compose.mainClock.advanceTimeBy(600)
         compose.waitForIdle()
         assertEquals(1, dismissed)
@@ -409,9 +419,12 @@ class SheetMotionTest {
         lateinit var entry: Job
         var dismissed = 0
         compose.runOnUiThread { compose.activity.setContent {
-            state = rememberSheetState("medium", tween(320), initiallyVisible = false)
+            state = rememberSheetState("medium", initiallyVisible = false)
             scope = rememberCoroutineScope()
-            BetterSheet(state, listOf(SheetSnapPoint.fraction("medium", .6f)), onDismissed = { dismissed++ }) {
+            BetterSheet(state, listOf(SheetSnapPoint.fraction("medium", .6f)),
+                enterTransition = slideInVertically(tween(320)) { it },
+                exitTransition = slideOutVertically(tween(320)) { it },
+                onDismissed = { dismissed++ }) {
                 Spacer(Modifier.height(120.dp))
             }
         } }
@@ -436,7 +449,7 @@ class SheetMotionTest {
         lateinit var state: SheetState
         var extra by mutableStateOf(false)
         compose.runOnUiThread { compose.activity.setContent {
-            state = rememberSheetState("content", tween(320))
+            state = rememberSheetState("content")
             BetterSheet(state, listOf(SheetSnapPoint.fitContent()),
                 header = { Spacer(Modifier.fillMaxWidth().height(48.dp).testTag("motion-header")) }) {
                 Spacer(Modifier.height(if (extra) 320.dp else 80.dp))
@@ -456,3 +469,4 @@ class SheetMotionTest {
         assertTrue(kotlin.math.abs((before - after).value - 240f) < 1f)
     }
 }
+

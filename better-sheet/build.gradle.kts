@@ -18,6 +18,7 @@ android {
 dependencies {
     api(platform("androidx.compose:compose-bom:2025.06.01"))
     api("androidx.compose.foundation:foundation")
+    api("androidx.compose.animation:animation")
     api("androidx.compose.ui:ui")
     implementation("androidx.activity:activity-compose:1.10.1")
     implementation("androidx.core:core-ktx:1.16.0")
@@ -55,3 +56,4 @@ mavenPublishing {
         }
     }
 }
+
