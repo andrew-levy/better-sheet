@@ -5,12 +5,16 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -24,6 +28,65 @@ import org.junit.Test
 
 class AnimationCustomizationTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+
+    @Test fun inlineEntranceStartsAtBottomOnFirstOpenAndReopen() = entranceStartsAtBottom(modal = false)
+
+    @Test fun modalEntranceStartsAtBottomOnFirstOpenAndReopen() = entranceStartsAtBottom(modal = true)
+
+    private fun entranceStartsAtBottom(modal: Boolean) {
+        lateinit var state: SheetState
+        lateinit var scope: CoroutineScope
+        var hostBottom = Float.NaN
+        var headerTop = Float.NaN
+        var surfaceHeight = Float.NaN
+        compose.runOnUiThread { compose.activity.setContent {
+            state = rememberSheetState("half", initiallyVisible = false)
+            scope = rememberCoroutineScope()
+            Box(Modifier.fillMaxSize().onGloballyPositioned { hostBottom = it.boundsInWindow().bottom }) {
+                val points = listOf(SheetSnapPoint.fraction("half", .5f))
+                val enter = slideInVertically(tween(1000, easing = LinearEasing)) { it }
+                val surface = Modifier.onGloballyPositioned { surfaceHeight = it.size.height.toFloat() }
+                val header: @Composable () -> Unit = {
+                    Spacer(Modifier.fillMaxWidth().height(48.dp)
+                        .onGloballyPositioned { headerTop = it.boundsInWindow().top })
+                }
+                if (modal) {
+                    BetterModalSheet(state, points, enterTransition = enter, exitTransition = ExitTransition.None,
+                        surfaceModifier = surface, header = header, bodyMode = SheetBodyMode.Fill) {
+                        Spacer(Modifier.fillMaxSize())
+                    }
+                } else {
+                    BetterSheet(state, points, enterTransition = enter, exitTransition = ExitTransition.None,
+                        surfaceModifier = surface, header = header, bodyMode = SheetBodyMode.Fill) {
+                        Spacer(Modifier.fillMaxSize())
+                    }
+                }
+            }
+        } }
+        compose.waitForIdle()
+        compose.mainClock.autoAdvance = false
+        try {
+            repeat(2) { opening ->
+                compose.runOnUiThread { scope.launch { state.show() } }
+                compose.mainClock.advanceTimeBy(96)
+                compose.waitForIdle()
+                assertTrue("Opening $opening must start near the bottom, not near the half-height anchor",
+                    headerTop.isFinite() && surfaceHeight > 0f && headerTop >= hostBottom - surfaceHeight * .2f)
+                val earlyTop = headerTop
+                compose.mainClock.advanceTimeBy(1200)
+                compose.waitForIdle()
+                assertEquals("half", state.currentSnapPoint)
+                assertTrue("Opening $opening must traverse nearly the entire sheet height",
+                    earlyTop - headerTop > surfaceHeight * .75f)
+                compose.runOnUiThread { scope.launch { state.hide() } }
+                compose.mainClock.advanceTimeBy(400)
+                compose.waitForIdle()
+                assertFalse(state.isVisible)
+            }
+        } finally {
+            compose.mainClock.autoAdvance = true
+        }
+    }
 
     @Test fun fadeKeepsHeightAndWaitsForExitAndCanReverse() {
         lateinit var state: SheetState

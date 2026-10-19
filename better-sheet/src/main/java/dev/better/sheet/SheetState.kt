@@ -14,6 +14,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -35,6 +36,9 @@ public class SheetState internal constructor(
     internal var presentationProgress: State<Float> by mutableStateOf(mutableFloatStateOf(0f))
     internal val presentationFraction: Float get() = presentationProgress.value.coerceIn(0f, 1f)
     internal var transitionsManaged = false
+    internal var presentationLayoutGeneration by mutableIntStateOf(0)
+        private set
+    internal var measuredPresentationLayoutGeneration by mutableIntStateOf(-1)
     private val operations = MutatorMutex()
     internal val presentationActive: Boolean get() = visibility.currentState == EnterExitState.Visible ||
         visibility.targetState == EnterExitState.Visible || !visibility.isIdle
@@ -157,7 +161,7 @@ public class SheetState internal constructor(
         require(target in g.offsets) { "Unknown snap point '$snapPoint'. Available: ${g.offsets.keys + g.aliases.keys}" }
         val entering = transitionsManaged && (!presentationActive ||
             (anchored.settledValue == HiddenId && !anchored.isAnimationRunning))
-        if (entering && visibility.currentState == EnterExitState.Visible) {
+        if (entering && visibility.currentState != EnterExitState.PreEnter) {
             visibility = MutableTransitionState(EnterExitState.PreEnter)
             presentationProgress = mutableFloatStateOf(0f)
         }
@@ -168,6 +172,13 @@ public class SheetState internal constructor(
         if (transitionsManaged && !entering && !immediate) visibility.targetState = EnterExitState.Visible
         if (immediate || entering) anchored.snapTo(target)
         else anchored.animateTo(target, snapAnimationSpec)
+        if (entering && !immediate) {
+            // slideIn derives its starting offset from the measured surface height.
+            // Measure at the destination while still PreEnter, otherwise it starts with
+            // the hidden sheet's tiny height and appears almost at its final position.
+            presentationLayoutGeneration++
+            snapshotFlow { measuredPresentationLayoutGeneration == presentationLayoutGeneration }.first { it }
+        }
         hasPresented = true
         if (transitionsManaged) {
             if (immediate) {
