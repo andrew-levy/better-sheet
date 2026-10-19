@@ -343,7 +343,11 @@ public fun BetterSheetHost(
                 .widthIn(max = maxWidth).fillMaxWidth()
                 .padding(horizontal = traySide)
                 .then(surfaceModifier)
-                .sheetSurfaceShadow(if (tray == null) 16.dp else 16.dp * (1f - morph), surfaceShape)
+                .sheetSurfaceShadow(
+                    if (tray == null) 16.dp else 16.dp * (1f - morph),
+                    surfaceShape,
+                    floating = tray != null,
+                )
                 .sheetDrawClip { surfaceShape }
                 .sheetNavigationCover(containerColor, navExtension)
 
