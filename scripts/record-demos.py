@@ -21,12 +21,20 @@ def run(*args, **kwargs):
     return subprocess.run(args, check=True, **kwargs)
 
 def encode(frames, mp4, gif):
-    # Constant 30 fps H.264 with faststart; the GIF preview derives from the published MP4.
+    # Preserve native resolution for MP4; encode GIFs directly from the captured frames.
+    # 540 px previews remain sharp on high-density displays at README card sizes.
     run('ffmpeg', '-v', 'error', '-y', '-framerate', f'{1000 / FRAME_MILLIS}', '-i', str(frames / '%05d.jpg'),
-        '-vf', 'fps=30', '-c:v', 'libx264', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-crf', '28',
+        '-vf', 'fps=30', '-c:v', 'libx264', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-crf', '18',
         '-preset', 'slow', '-movflags', '+faststart', str(mp4))
-    run('ffmpeg', '-v', 'error', '-y', '-i', str(mp4), '-vf',
-        'fps=10,scale=360:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse', str(gif))
+    encode_preview(frames / '%05d.jpg', gif, framerate=1000 / FRAME_MILLIS)
+
+def encode_preview(source, gif, framerate=None):
+    input_args = ['-framerate', str(framerate)] if framerate else []
+    run('ffmpeg', '-v', 'error', '-y', *input_args, '-i', str(source), '-filter_complex',
+        'fps=25,scale=540:-1:flags=lanczos,split[s0][s1];'
+        '[s0]palettegen=stats_mode=diff[p];'
+        '[s1][p]paletteuse=dither=sierra2_4a:diff_mode=rectangle',
+        '-loop', '0', str(gif))
 
 def record(scenario, work):
     out = ROOT / 'docs' / 'videos'

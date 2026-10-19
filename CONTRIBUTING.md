@@ -1,6 +1,6 @@
 # Contributing
 
-Use Android Studio with JDK 17 and SDK 35. Preserve named-detent semantics and caller-owned lazy
+Use Android Studio with JDK 17 and SDK 35. Preserve named snap-point semantics and caller-owned lazy
 scrolling. Add tests around user-observable behavior, particularly resizing and gesture handoff,
 when changing those paths. Do not add a Material dependency to the core library.
 
@@ -25,14 +25,16 @@ python3 scripts/record-demos.py chat
 ```
 
 The script builds and installs the sample and its test APK, runs one recording test per scenario,
-and assembles per-frame screenshots into a 30 fps MP4 and a GIF. Every push to `main` records all scenarios. Once the build, lint, unit tests, API 24/35 device
-tests, and recording job pass, CI commits the generated GIFs and MP4s to `docs/videos/`.
-The README updates automatically. Video-only commits do not start another recording run.
-Stale runs cannot overwrite newer source commits.
+and assembles per-frame screenshots into a native-resolution 30 fps MP4 (H.264 CRF 18)
+and a 540 px, 25 fps GIF preview. GIFs use the captured frames directly, with a motion-aware
+palette and error-diffusion dithering to keep text and gradients clean. README previews display at
+240 px wide; clicking opens the full-resolution MP4.
 
-On feature branches, push a commit containing `[record-demos]` to generate a downloadable
-`demo-videos` artifact. To publish manually, run the Android workflow on `main` with
-`record_demos` enabled; validation still runs before publication.
+Every source push on every branch records all scenarios. Once build, lint, unit tests,
+API 24/35 device tests, and recordings pass, CI commits the generated GIFs and MP4s back to
+that branch. The README updates automatically. Video-only commits do not start another run,
+and stale runs cannot overwrite newer source commits. You can also run the **Android**
+workflow manually on the branch to repeat validation and recording.
 
 ## Releasing
 
