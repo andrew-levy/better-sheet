@@ -41,7 +41,6 @@ class AnimationCustomizationTest {
         lateinit var state: SheetState
         lateinit var scope: CoroutineScope
         var hostBottom = Float.NaN
-        var headerTop = Float.NaN
         var surfaceHeight = Float.NaN
         val sheetBlue = Color(0xFF0033FF)
         if (initiallyVisible) compose.mainClock.autoAdvance = false
@@ -53,8 +52,7 @@ class AnimationCustomizationTest {
                 val enter = slideInVertically(tween(1000, easing = LinearEasing)) { it }
                 val surface = Modifier.onGloballyPositioned { surfaceHeight = it.size.height.toFloat() }
                 val header: @Composable () -> Unit = {
-                    Spacer(Modifier.fillMaxWidth().height(48.dp)
-                        .onGloballyPositioned { headerTop = it.boundsInWindow().top })
+                    Spacer(Modifier.fillMaxWidth().height(48.dp))
                 }
                 if (modal) {
                     BetterModalSheet(state, points, enterTransition = enter, exitTransition = ExitTransition.None,
@@ -80,11 +78,11 @@ class AnimationCustomizationTest {
                 }
                 compose.mainClock.advanceTimeBy(96)
                 compose.waitForIdle()
-                assertTrue("Opening $opening must start near the bottom, not near the half-height anchor",
-                    headerTop.isFinite() && surfaceHeight > 0f && headerTop >= hostBottom - surfaceHeight * .2f)
+                // At this point the header is still below the window. boundsInWindow()
+                // clips it to an empty rectangle at zero; inspect visible surface pixels.
                 val earlyTop = renderedBlueTop()
-                assertTrue("Rendered opening $opening must start at the bottom too",
-                    earlyTop >= hostBottom - surfaceHeight * .2f)
+                assertTrue("Opening $opening: rendered top=$earlyTop, bottom=$hostBottom, height=$surfaceHeight",
+                    surfaceHeight > 0f && earlyTop >= hostBottom - surfaceHeight * .2f)
                 compose.mainClock.advanceTimeBy(1200)
                 compose.waitForIdle()
                 assertEquals("half", state.currentSnapPoint)
@@ -100,7 +98,7 @@ class AnimationCustomizationTest {
         }
     }
 
-    /** Check RenderThread pixels as well as layout coordinates; layer offsets can disagree. */
+    /** Check RenderThread pixels; clipped offscreen child bounds cannot describe the entrance. */
     private fun renderedBlueTop(): Float {
         val drawn = java.util.concurrent.CountDownLatch(1)
         compose.runOnUiThread {
