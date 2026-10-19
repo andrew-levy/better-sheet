@@ -212,12 +212,16 @@ public fun BetterSheetHost(
     val releaseBackground by remember(state, backgroundTouchSlop) {
         derivedStateOf {
             val g = state.geometry ?: return@derivedStateOf false
-            !state.presentationActive || (!state.presentationExiting && releasesBackgroundPointer(
-                targetHidden = state.hasPresented && state.targetSnapPoint == null,
-                dragInProgress = state.dragInProgress,
-                visibleHeight = (g.availableHeight - state.offsetOrHidden()).coerceAtLeast(0f),
-                slop = backgroundTouchSlop,
-            ))
+            // The anchor stays at its snap point during an exit transition. Waiting for
+            // that anchor (or a spring's long tail) leaves an invisible touch blocker.
+            !state.presentationActive || (state.presentationExiting &&
+                !state.dragInProgress && state.presentationFraction <= 0.01f) ||
+                (!state.presentationExiting && releasesBackgroundPointer(
+                    targetHidden = state.hasPresented && state.targetSnapPoint == null,
+                    dragInProgress = state.dragInProgress,
+                    visibleHeight = (g.availableHeight - state.offsetOrHidden()).coerceAtLeast(0f),
+                    slop = backgroundTouchSlop,
+                ))
         }
     }
     val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
@@ -284,8 +288,12 @@ public fun BetterSheetHost(
                     }
                 }
                 .then(when {
-                    blocksBackground && behavior.dismissOnScrim ->
-                        Modifier.clickable(onClickLabel = "Dismiss $title") { scope.launch { state.hide() } }
+                    blocksBackground && behavior.dismissOnScrim && !state.presentationExiting ->
+                        Modifier.clickable(
+                            interactionSource = null,
+                            indication = null,
+                            onClickLabel = "Dismiss $title",
+                        ) { scope.launch { state.hide() } }
                     blocksBackground -> Modifier.pointerInput(Unit) {
                         awaitPointerEventScope {
                             while (true) {
@@ -296,7 +304,9 @@ public fun BetterSheetHost(
                     else -> Modifier
                 })
                 .semantics {
-                    if (blocksBackground && behavior.dismissOnScrim) contentDescription = "Dismiss $title"
+                    if (blocksBackground && behavior.dismissOnScrim && !state.presentationExiting) {
+                        contentDescription = "Dismiss $title"
+                    }
                 })
         }
         val keyboardCoversNav = behavior.keyboardBehavior != SheetKeyboardBehavior.Ignore && imeInset > navInset
