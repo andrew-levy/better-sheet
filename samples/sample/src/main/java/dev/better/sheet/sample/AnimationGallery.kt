@@ -29,9 +29,26 @@ internal fun AnimationGallery(close: () -> Unit) {
         Text("Make it move your way.", style = MaterialTheme.typography.headlineMedium)
         Text("One sheet. Standard Compose transitions. A separate spec for snapping.")
         for ((id, title, detail) in listOf(
-            Triple("Spring", "Spring", "Slide in/out · bouncy spring snapping"),
-            Triple("Fade", "Fade", "220 ms in / 180 ms out · 600 ms tween snapping"),
-            Triple("SlideFade", "Slide + fade", "450 ms enter / 300 ms exit · firm spring snapping"),
+            Triple(
+                "Spring",
+                "Spring",
+                "Enter/exit: vertical slide with a stiff spring (slight overshoot). " +
+                    "Snap (Expand / Half height): low-damping spring — watch for a quick bounce past the detent, then settle. " +
+                    "No opacity change on show/hide.",
+            ),
+            Triple(
+                "Fade",
+                "Fade",
+                "Enter/exit: opacity only (~900 ms in, ~750 ms out) — the sheet should not slide; it fades in place. " +
+                    "Scrim and sheet blue wash in together. Snap uses a slow tween (~1.4 s) so height changes are easy to see.",
+            ),
+            Triple(
+                "SlideFade",
+                "Slide + fade",
+                "Enter/exit: slide and fade together (~750 ms in, ~550 ms out). " +
+                    "Snap: high-stiffness spring — should reach the detent fast with little float. " +
+                    "Compare to Spring: more motion on open/close, snappier detent changes.",
+            ),
         )) {
             OutlinedButton(onClick = { preset = id; scope.launch { state.show("medium") } },
                 modifier = Modifier.fillMaxWidth().testTag("animation-open-$id")) {
@@ -44,27 +61,43 @@ internal fun AnimationGallery(close: () -> Unit) {
         TextButton(onClick = close) { Text("Back to demos") }
     }
     val enter = when (preset) {
-        "Fade" -> fadeIn(tween(220))
-        "SlideFade" -> slideInVertically(tween(450)) { it } + fadeIn(tween(450))
-        else -> slideInVertically(spring(dampingRatio = 1f, stiffness = 440f)) { it }
+        "Fade" -> fadeIn(tween(900))
+        "SlideFade" -> slideInVertically(tween(750)) { it } + fadeIn(tween(750))
+        else -> slideInVertically(spring(dampingRatio = .85f, stiffness = 920f)) { it }
     }
     val exit = when (preset) {
-        "Fade" -> fadeOut(tween(180))
-        "SlideFade" -> slideOutVertically(tween(300)) { it } + fadeOut(tween(300))
-        else -> slideOutVertically(spring(dampingRatio = 1f, stiffness = 440f)) { it }
+        "Fade" -> fadeOut(tween(750))
+        "SlideFade" -> slideOutVertically(tween(550)) { it } + fadeOut(tween(550))
+        else -> slideOutVertically(spring(dampingRatio = .85f, stiffness = 920f)) { it }
     }
     BetterModalSheet(state, points, title = "Animation examples",
         enterTransition = enter, exitTransition = exit,
         snapAnimationSpec = when (preset) {
-            "Fade" -> tween(600)
-            "SlideFade" -> spring(dampingRatio = 1f, stiffness = 600f)
-            else -> spring(dampingRatio = .65f, stiffness = 180f)
+            "Fade" -> tween(1400)
+            "SlideFade" -> spring(dampingRatio = .9f, stiffness = 1400f)
+            else -> spring(dampingRatio = .5f, stiffness = 720f)
         },
         header = {
             Column(Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) {
-                Text(when (preset) { "Fade" -> "Fade + tween"; "SlideFade" -> "Slide + fade"; else -> "Bouncy spring" },
-                    style = MaterialTheme.typography.headlineSmall)
-                Text("Enter / exit describe appearance. Snap spec controls movement.")
+                Text(
+                    when (preset) {
+                        "Fade" -> "Fade + slow tween snap"
+                        "SlideFade" -> "Slide + fade · snappy snap"
+                        else -> "Bouncy spring slide + snap"
+                    },
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+                Text(
+                    when (preset) {
+                        "Fade" ->
+                            "Open/Close: fade only. Expand/Half height: ~1.4 s height tween — no bounce."
+                        "SlideFade" ->
+                            "Open/Close: slide + fade. Expand/Half height: stiff spring — fast settle."
+                        else ->
+                            "Open/Close: spring slide. Expand/Half height: undershoot/overshoot bounce."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
         },
         footer = {
@@ -80,7 +113,11 @@ internal fun AnimationGallery(close: () -> Unit) {
             }
         }) {
         Column(Modifier.fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text("Watch the entrance, try both snap points, then close the sheet.")
+            Text(
+                "1) Note how the sheet appears and disappears. " +
+                    "2) Tap Expand, then Half height — watch snap timing. " +
+                    "3) Close and reopen another preset to compare.",
+            )
             repeat(3) { index ->
                 Surface(color = Color(0xFFF3F5FA), shape = MaterialTheme.shapes.medium) {
                     Text(listOf("Sticky actions stay at the bottom", "Dragging still follows your finger", "The same API works in fragments")[index],
