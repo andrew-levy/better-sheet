@@ -1,0 +1,69 @@
+name: Verify JitPack
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/verify-jitpack.yml']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Existing unprefixed release version (defaults to VERSION_NAME)
+        required: false
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: verify-jitpack
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select existing release
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${REQUESTED_VERSION:-$(sed -n 's/^VERSION_NAME=//p' gradle.properties)}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Expected an unprefixed semantic version"
+            exit 1
+          fi
+          gh release view "$version" --repo "$GITHUB_REPOSITORY"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+      - name: Verify JitPack publication
+        timeout-minutes: 20
+        run: |
+          base="https://jitpack.io/com/github/andrew-levy/better-sheet/$VERSION/better-sheet-$VERSION"
+          for extension in pom aar; do
+            curl --fail --show-error --location --retry 12 --retry-all-errors --retry-delay 20 \
+              --retry-max-time 900 --connect-timeout 15 --max-time 60 "$base.$extension" -o "$RUNNER_TEMP/better-sheet.$extension"
+          done
+          python3 - <<'PY'
+          import os
+          import xml.etree.ElementTree as ET
+          import zipfile
+          from pathlib import Path
+          directory = Path(os.environ["RUNNER_TEMP"])
+          namespace = {"m": "http://maven.apache.org/POM/4.0.0"}
+          pom = ET.parse(directory / "better-sheet.pom").getroot()
+          for field, expected in {
+              "groupId": "com.github.andrew-levy",
+              "artifactId": "better-sheet",
+              "version": os.environ["VERSION"],
+              "packaging": "aar",
+          }.items():
+              if pom.findtext(f"m:{field}", namespaces=namespace) != expected:
+                  raise SystemExit(f"Unexpected JitPack POM {field}")
+          with zipfile.ZipFile(directory / "better-sheet.aar") as aar:
+              if not {"classes.jar", "AndroidManifest.xml"} <= set(aar.namelist()):
+                  raise SystemExit("JitPack AAR is missing compiled library files")
+              if aar.testzip() is not None:
+                  raise SystemExit("JitPack AAR is corrupt")
+          PY
+      - name: JitPack diagnostics
+        if: failure()
+        run: |
+          curl --silent --show-error --location --connect-timeout 10 --max-time 30 "https://jitpack.io/api/builds/com.github.andrew-levy/better-sheet/$VERSION" || true
+          curl --silent --show-error --location --connect-timeout 10 --max-time 30 "https://jitpack.io/com/github/andrew-levy/better-sheet/$VERSION/build.log" || true
