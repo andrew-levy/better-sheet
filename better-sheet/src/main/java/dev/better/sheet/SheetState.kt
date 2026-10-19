@@ -161,10 +161,6 @@ public class SheetState internal constructor(
         require(target in g.offsets) { "Unknown snap point '$snapPoint'. Available: ${g.offsets.keys + g.aliases.keys}" }
         val entering = transitionsManaged && (!presentationActive ||
             (anchored.settledValue == HiddenId && !anchored.isAnimationRunning))
-        if (entering && visibility.currentState != EnterExitState.PreEnter) {
-            visibility = MutableTransitionState(EnterExitState.PreEnter)
-            presentationProgress = mutableFloatStateOf(0f)
-        }
         clearRubber()
         programmaticHide = false
         lastVisibleSnapPoint = target
@@ -174,10 +170,12 @@ public class SheetState internal constructor(
         else anchored.animateTo(target, snapAnimationSpec)
         if (entering && !immediate) {
             // slideIn derives its starting offset from the measured surface height.
-            // Measure at the destination while still PreEnter, otherwise it starts with
-            // the hidden sheet's tiny height and appears almost at its final position.
+            // Measure at the destination while hidden, then recreate the transition:
+            // its deferred slide animation caches the initial value from the old size.
             presentationLayoutGeneration++
             snapshotFlow { measuredPresentationLayoutGeneration == presentationLayoutGeneration }.first { it }
+            visibility = MutableTransitionState(EnterExitState.PreEnter)
+            presentationProgress = mutableFloatStateOf(0f)
         }
         hasPresented = true
         if (transitionsManaged) {

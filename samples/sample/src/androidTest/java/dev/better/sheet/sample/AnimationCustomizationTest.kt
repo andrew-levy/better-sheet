@@ -33,14 +33,20 @@ class AnimationCustomizationTest {
 
     @Test fun modalEntranceStartsAtBottomOnFirstOpenAndReopen() = entranceStartsAtBottom(modal = true)
 
-    private fun entranceStartsAtBottom(modal: Boolean) {
+    @Test fun initiallyVisibleInlineEntranceStartsAtBottom() = entranceStartsAtBottom(modal = false, initiallyVisible = true)
+
+    @Test fun initiallyVisibleModalEntranceStartsAtBottom() = entranceStartsAtBottom(modal = true, initiallyVisible = true)
+
+    private fun entranceStartsAtBottom(modal: Boolean, initiallyVisible: Boolean = false) {
         lateinit var state: SheetState
         lateinit var scope: CoroutineScope
         var hostBottom = Float.NaN
         var headerTop = Float.NaN
         var surfaceHeight = Float.NaN
+        val sheetBlue = Color(0xFF0033FF)
+        if (initiallyVisible) compose.mainClock.autoAdvance = false
         compose.runOnUiThread { compose.activity.setContent {
-            state = rememberSheetState("half", initiallyVisible = false)
+            state = rememberSheetState("half", initiallyVisible = initiallyVisible)
             scope = rememberCoroutineScope()
             Box(Modifier.fillMaxSize().onGloballyPositioned { hostBottom = it.boundsInWindow().bottom }) {
                 val points = listOf(SheetSnapPoint.fraction("half", .5f))
@@ -52,11 +58,13 @@ class AnimationCustomizationTest {
                 }
                 if (modal) {
                     BetterModalSheet(state, points, enterTransition = enter, exitTransition = ExitTransition.None,
+                        containerColor = sheetBlue, scrimColor = Color.Transparent,
                         surfaceModifier = surface, header = header, bodyMode = SheetBodyMode.Fill) {
                         Spacer(Modifier.fillMaxSize())
                     }
                 } else {
                     BetterSheet(state, points, enterTransition = enter, exitTransition = ExitTransition.None,
+                        containerColor = sheetBlue, scrimColor = Color.Transparent,
                         surfaceModifier = surface, header = header, bodyMode = SheetBodyMode.Fill) {
                         Spacer(Modifier.fillMaxSize())
                     }
@@ -67,17 +75,21 @@ class AnimationCustomizationTest {
         compose.mainClock.autoAdvance = false
         try {
             repeat(2) { opening ->
-                compose.runOnUiThread { scope.launch { state.show() } }
+                if (!initiallyVisible || opening > 0) {
+                    compose.runOnUiThread { scope.launch { state.show() } }
+                }
                 compose.mainClock.advanceTimeBy(96)
                 compose.waitForIdle()
                 assertTrue("Opening $opening must start near the bottom, not near the half-height anchor",
                     headerTop.isFinite() && surfaceHeight > 0f && headerTop >= hostBottom - surfaceHeight * .2f)
-                val earlyTop = headerTop
+                val earlyTop = renderedBlueTop()
+                assertTrue("Rendered opening $opening must start at the bottom too",
+                    earlyTop >= hostBottom - surfaceHeight * .2f)
                 compose.mainClock.advanceTimeBy(1200)
                 compose.waitForIdle()
                 assertEquals("half", state.currentSnapPoint)
                 assertTrue("Opening $opening must traverse nearly the entire sheet height",
-                    earlyTop - headerTop > surfaceHeight * .75f)
+                    earlyTop - renderedBlueTop() > surfaceHeight * .75f)
                 compose.runOnUiThread { scope.launch { state.hide() } }
                 compose.mainClock.advanceTimeBy(400)
                 compose.waitForIdle()
@@ -86,6 +98,29 @@ class AnimationCustomizationTest {
         } finally {
             compose.mainClock.autoAdvance = true
         }
+    }
+
+    /** Check RenderThread pixels as well as layout coordinates; layer offsets can disagree. */
+    private fun renderedBlueTop(): Float {
+        val drawn = java.util.concurrent.CountDownLatch(1)
+        compose.runOnUiThread {
+            android.view.Choreographer.getInstance().postFrameCallback {
+                android.view.Choreographer.getInstance().postFrameCallback { drawn.countDown() }
+            }
+        }
+        check(drawn.await(5, java.util.concurrent.TimeUnit.SECONDS))
+        val bitmap = checkNotNull(androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
+            .uiAutomation.takeScreenshot())
+        try {
+            for (y in 0 until bitmap.height) {
+                val pixel = bitmap.getPixel(bitmap.width / 2, y)
+                if (android.graphics.Color.red(pixel) < 15 &&
+                    android.graphics.Color.green(pixel) in 40..65 && android.graphics.Color.blue(pixel) > 240) {
+                    return y.toFloat()
+                }
+            }
+            error("No rendered sheet pixels found")
+        } finally { bitmap.recycle() }
     }
 
     @Test fun fadeKeepsHeightAndWaitsForExitAndCanReverse() {
