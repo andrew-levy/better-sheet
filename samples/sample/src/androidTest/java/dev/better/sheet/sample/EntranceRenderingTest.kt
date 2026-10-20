@@ -101,27 +101,42 @@ class EntranceRenderingTest {
                     check(drawn.await(5, java.util.concurrent.TimeUnit.SECONDS)) { "Android did not draw a frame" }
                     return renderedTop()
                 }
-                var firstTop: Float? = null
-                compose.waitUntil(15000) { drawnTop().also { firstTop = it } != null }
+                fun awaitDrawnTop(label: String, ready: (Float) -> Boolean): Float {
+                    var top: Float? = null
+                    // Animation time is frozen, but Android/RenderThread can still be
+                    // presenting the preceding frame under load. Wait for the requested
+                    // pixels rather than assuming two Choreographer callbacks suffice.
+                    try {
+                        compose.waitUntil(10000) { drawnTop().also { top = it }?.let(ready) == true }
+                    } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
+                        throw AssertionError("Opening $opening: $label; last rendered top=$top, height=$height", failure)
+                    }
+                    return checkNotNull(top)
+                }
+                val firstTop = awaitDrawnTop("no early sheet pixels") { true }
                 var bottom = 0f
                 var fullHeight = 0f
                 compose.runOnUiThread { bottom = hostBottom; fullHeight = height }
                 assertTrue("Opening $opening appeared too high: top=$firstTop, bottom=$bottom, height=$fullHeight",
-                    fullHeight > 0f && firstTop!! >= bottom - fullHeight * .25f)
+                    fullHeight > 0f && firstTop >= bottom - fullHeight * .25f)
                 compose.mainClock.advanceTimeBy(800)
                 compose.waitForIdle()
-                val middleTop = checkNotNull(drawnTop()) { "Sheet disappeared during entrance" }
+                val middleTop = awaitDrawnTop("entrance did not move upward") {
+                    firstTop - it > fullHeight * .25f
+                }
                 assertTrue("Opening $opening did not move upward: first=$firstTop, middle=$middleTop",
-                    firstTop!! - middleTop > fullHeight * .25f)
+                    firstTop - middleTop > fullHeight * .25f)
                 compose.mainClock.advanceTimeBy(2200)
                 compose.waitForIdle()
                 compose.runOnUiThread {
                     assertEquals("half", state.currentSnapPoint)
                     assertFalse("Entrance never settled", state.isAnimationRunning)
                 }
-                val finalTop = checkNotNull(drawnTop()) { "Settled sheet did not render" }
+                val finalTop = awaitDrawnTop("settled frame skipped entrance travel") {
+                    firstTop - it > fullHeight * .65f && middleTop - it > fullHeight * .25f
+                }
                 assertTrue("Opening $opening skipped most of its travel: first=$firstTop, final=$finalTop, height=$fullHeight",
-                    firstTop!! - finalTop > fullHeight * .65f)
+                    firstTop - finalTop > fullHeight * .65f)
                 assertTrue("Opening $opening settled before the middle frame: middle=$middleTop, final=$finalTop",
                     middleTop - finalTop > fullHeight * .25f)
                 compose.runOnUiThread { scope.launch { state.hide() } }
