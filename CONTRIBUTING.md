@@ -40,6 +40,17 @@ that branch. The README updates automatically. Video-only commits do not start a
 and stale runs cannot overwrite newer source commits. You can also run the **Android**
 workflow manually on the branch to repeat validation and recording.
 
+Device jobs keep API 24 and 35 coverage. They compile APKs before launching the emulator,
+then require Android's boot, package, and window services to be ready before running tests.
+Failed jobs upload continuous logcat and system diagnostics with the device reports;
+check these before treating a system crash as an application assertion failure.
+`python3 -m unittest discover -s scripts/tests -v` checks the runner's readiness gating
+and failure propagation without an emulator.
+
+Entrance-rendering tests step Compose animation time explicitly while capturing real
+window pixels. Keep animation time paused while waiting for Android rendering or screenshots;
+host scheduling and screenshot latency must not determine which animation frame is asserted.
+
 ## Releasing
 
 Project convention: use plain semantic versions without a `v` prefix everywhere: Git tags,

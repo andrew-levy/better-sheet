@@ -1,6 +1,5 @@
 package dev.better.sheet.sample
 
-import android.os.SystemClock
 import androidx.activity.compose.setContent
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.LinearEasing
@@ -14,16 +13,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
-import androidx.test.core.app.ActivityScenario
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.better.sheet.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.junit.Assert.*
+import org.junit.Rule
 import org.junit.Test
 
-/** Real Choreographer frames and window pixels, without a paused Compose test clock. */
+/** Freeze animation time while Android draws and UiAutomation captures real window pixels. */
 class EntranceRenderingTest {
+    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
 
     @Test fun inlineFirstOpenAndReopenSlideFromBottom() = verifyEntrance(false, false)
@@ -36,15 +37,13 @@ class EntranceRenderingTest {
         lateinit var scope: CoroutineScope
         var hostBottom = 0f
         var height = 0f
-        val initialized = java.util.concurrent.atomic.AtomicBoolean(false)
-        fun awaitCondition(message: String, condition: () -> Boolean) {
-            val deadline = SystemClock.uptimeMillis() + 15000
-            while (true) {
-                var ready = false
-                instrumentation.runOnMainSync { ready = initialized.get() && condition() }
-                if (ready) return
-                check(SystemClock.uptimeMillis() < deadline) { message }
-                SystemClock.sleep(16)
+        // Layout/draw run on Android's real clock; animations run on the test clock.
+        // A slow screenshot must not consume the early part of the entrance animation.
+        compose.mainClock.autoAdvance = false
+        fun advanceFrames(count: Int) {
+            repeat(count) {
+                compose.mainClock.advanceTimeByFrame()
+                compose.waitForIdle()
             }
         }
         fun renderedTop(): Float? {
@@ -63,11 +62,10 @@ class EntranceRenderingTest {
                 return null
             } finally { shot.recycle() }
         }
-        ActivityScenario.launch(MainActivity::class.java).use { activity ->
-            activity.onActivity { it.setContent {
+        try {
+            compose.runOnUiThread { compose.activity.setContent {
                 state = rememberSheetState("half", initiallyVisible = initiallyVisible)
                 scope = rememberCoroutineScope()
-                SideEffect { initialized.set(true) }
                 Box(Modifier.fillMaxSize().background(Color.White)
                     .onGloballyPositioned { hostBottom = it.boundsInWindow().bottom }) {
                     val points = listOf(SheetSnapPoint.fraction("half", .5f))
@@ -84,35 +82,60 @@ class EntranceRenderingTest {
                     }
                 }
             } }
-            awaitCondition("Sheet never initialized") { height > 0f || !initiallyVisible }
+            advanceFrames(2)
             repeat(2) { opening ->
-                if (!initiallyVisible || opening > 0) instrumentation.runOnMainSync { scope.launch { state.show() } }
-                val deadline = SystemClock.uptimeMillis() + 15000
-                var firstTop: Float? = null
-                while (firstTop == null) {
-                    firstTop = renderedTop()
-                    check(SystemClock.uptimeMillis() < deadline) { "No rendered sheet pixels for opening $opening" }
-                    if (firstTop == null) SystemClock.sleep(16)
+                if (!initiallyVisible || opening > 0) compose.runOnUiThread { scope.launch { state.show() } }
+                // Allow composition, measurement, and the transition's first frame to run.
+                // Even on a slow emulator this advances animation time by only 160 ms.
+                advanceFrames(10)
+                fun drawnTop(): Float? {
+                    compose.waitForIdle()
+                    // waitForIdle covers layout/draw scheduling; wait for RenderThread to
+                    // present the frame before sampling pixels (also works on API 24).
+                    val drawn = java.util.concurrent.CountDownLatch(1)
+                    compose.runOnUiThread {
+                        android.view.Choreographer.getInstance().postFrameCallback {
+                            android.view.Choreographer.getInstance().postFrameCallback { drawn.countDown() }
+                        }
+                    }
+                    check(drawn.await(5, java.util.concurrent.TimeUnit.SECONDS)) { "Android did not draw a frame" }
+                    return renderedTop()
                 }
+                var firstTop: Float? = null
+                compose.waitUntil(15000) { drawnTop().also { firstTop = it } != null }
                 var bottom = 0f
                 var fullHeight = 0f
-                instrumentation.runOnMainSync { bottom = hostBottom; fullHeight = height }
+                compose.runOnUiThread { bottom = hostBottom; fullHeight = height }
                 assertTrue("Opening $opening appeared too high: top=$firstTop, bottom=$bottom, height=$fullHeight",
                     fullHeight > 0f && firstTop!! >= bottom - fullHeight * .25f)
-                awaitCondition("Entrance never settled") { state.currentSnapPoint == "half" && !state.isAnimationRunning }
-                SystemClock.sleep(100)
-                val finalTop = checkNotNull(renderedTop()) { "Settled sheet did not render" }
+                compose.mainClock.advanceTimeBy(800)
+                compose.waitForIdle()
+                val middleTop = checkNotNull(drawnTop()) { "Sheet disappeared during entrance" }
+                assertTrue("Opening $opening did not move upward: first=$firstTop, middle=$middleTop",
+                    firstTop!! - middleTop > fullHeight * .25f)
+                compose.mainClock.advanceTimeBy(2200)
+                compose.waitForIdle()
+                compose.runOnUiThread {
+                    assertEquals("half", state.currentSnapPoint)
+                    assertFalse("Entrance never settled", state.isAnimationRunning)
+                }
+                val finalTop = checkNotNull(drawnTop()) { "Settled sheet did not render" }
                 assertTrue("Opening $opening skipped most of its travel: first=$firstTop, final=$finalTop, height=$fullHeight",
                     firstTop!! - finalTop > fullHeight * .65f)
-                instrumentation.runOnMainSync { scope.launch { state.hide() } }
-                awaitCondition("Exit never settled") { !state.isVisible && !state.isAnimationRunning }
-                // Wait for RenderThread before capturing the next entrance.
-                val hiddenDeadline = SystemClock.uptimeMillis() + 5000
-                while (renderedTop() != null) {
-                    check(SystemClock.uptimeMillis() < hiddenDeadline) { "Hidden sheet still renders" }
-                    SystemClock.sleep(16)
+                assertTrue("Opening $opening settled before the middle frame: middle=$middleTop, final=$finalTop",
+                    middleTop - finalTop > fullHeight * .25f)
+                compose.runOnUiThread { scope.launch { state.hide() } }
+                advanceFrames(2)
+                // The sheet also animates its scrim/stack progress for 150 ms.
+                compose.mainClock.advanceTimeBy(500)
+                compose.waitForIdle()
+                compose.runOnUiThread {
+                    assertFalse("Exit never settled", state.isVisible || state.isAnimationRunning)
                 }
+                compose.waitUntil(5000) { drawnTop() == null }
             }
+        } finally {
+            compose.mainClock.autoAdvance = true
         }
     }
 }
