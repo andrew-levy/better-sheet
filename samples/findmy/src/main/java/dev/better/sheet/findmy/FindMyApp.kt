@@ -1,49 +1,48 @@
 package dev.better.sheet.findmy
 
-import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
+import androidx.activity.compose.BackHandler
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -67,7 +66,6 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -79,38 +77,39 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.draw.shadow
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.displayCutout
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.systemBars
 import dev.better.sheet.BetterModalSheet
-import dev.better.sheet.SheetPresentation
 import dev.better.sheet.BetterSheetHost
 import dev.better.sheet.SheetBehavior
 import dev.better.sheet.SheetBodyMode
-import dev.better.sheet.SheetSnapPoint
 import dev.better.sheet.SheetKeyboardBehavior
+import dev.better.sheet.SheetPresentation
+import dev.better.sheet.SheetSnapPoint
 import dev.better.sheet.SheetState
 import dev.better.sheet.rememberSheetState
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -277,8 +276,11 @@ internal fun FindMyApp() {
         LaunchedEffect(selectedId) { mapController.recenter(friends.find { it.id == selectedId }) }
         DemoControls.Bind("people", people, enabled = peopleFront && tab == "People")
         DemoControls.Bind("chat", people, enabled = peopleFront && tab == "Chat")
+        val density = LocalDensity.current
+        val imeVisible = WindowInsets.ime.getBottom(density) > WindowInsets.navigationBars.getBottom(density)
         BackHandler(enabled = peopleFront && people.targetSnapPoint != "collapsed") {
-            scope.launch { people.snapTo("collapsed") }
+            if (imeVisible) { focus.clearFocus(); keyboard?.hide() }
+            else scope.launch { people.snapTo("collapsed") }
         }
         SideEffect {
             if (contactFor == null) contactProgress = 0f
@@ -406,7 +408,7 @@ private fun MainSheet(
     val colors = findColors()
     val peopleList = rememberLazyListState()
     val history = remember { chatHistory() }
-    val chatList = rememberLazyListState(initialFirstVisibleItemIndex = history.size)
+    val chatList = rememberLazyListState(initialFirstVisibleItemIndex = history.lastIndex)
     var draft by rememberSaveable { mutableStateOf("") }
     val sent = remember { mutableStateListOf<ChatLine>() }
     val messages = history + sent
@@ -450,13 +452,13 @@ private fun MainSheet(
             label = "People and chat",
         ) { selectedTab ->
             Column(Modifier.fillMaxSize()) {
+                TabTitle(if (selectedTab == "People") "People" else "Friends", Modifier.revealHeight(1f - closing))
                 if (selectedTab == "People") {
                     LazyColumn(
                         state = peopleList,
                         modifier = Modifier.weight(1f).fillMaxWidth().testTag(if (front) "people-list" else "covered-people-list"),
                         contentPadding = PaddingValues(top = 4.dp, bottom = 8.dp),
                     ) {
-                        item(key = "title") { TabTitle("People") }
                         items(friends, key = { it.id }) { friend ->
                             PersonRow(friend, Modifier.testTag("person-${friend.id}"), onClick = { onSelect(friend) })
                         }
@@ -482,8 +484,8 @@ private fun MainSheet(
 }
 
 @Composable
-private fun TabTitle(title: String) {
-    Text(title, Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+private fun TabTitle(title: String, modifier: Modifier = Modifier) {
+    Text(title, modifier.padding(horizontal = 20.dp, vertical = 12.dp),
         color = findColors().ink, fontSize = 28.sp, fontWeight = FontWeight.Bold)
 }
 
@@ -672,7 +674,6 @@ private fun ChatContent(messages: List<ChatLine>, list: LazyListState, modifier:
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        item(key = "title") { TabTitle("Friends") }
         items(messages.size, key = { it }) { index ->
             val line = messages[index]
             Row(Modifier.fillMaxWidth(), horizontalArrangement = if (line.mine) Arrangement.End else Arrangement.Start) {
