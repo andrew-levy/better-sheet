@@ -317,13 +317,6 @@ public fun BetterSheetHost(
                 )
             }
         }
-        val shadowFraction by remember(state, tray, availablePx) {
-            derivedStateOf {
-                if (tray == null) 1f else trayShadowFraction(
-                    availablePx - state.layoutOffset(), availablePx, tray.morphStartFraction,
-                )
-            }
-        }
         val traySide = (tray?.horizontalInset ?: 0.dp) * (1f - morph)
         val trayGap = (tray?.bottomInset ?: 0.dp) * (1f - morph)
         // Move the surface into the navigation area while reserving the same space inside it.
@@ -361,7 +354,7 @@ public fun BetterSheetHost(
                 .padding(horizontal = traySide)
                 .then(surfaceModifier)
                 .sheetSurfaceShadow(
-                    16.dp * shadowFraction,
+                    16.dp,
                     surfaceShape,
                     floating = tray != null,
                 )

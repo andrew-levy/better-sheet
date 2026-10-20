@@ -18,7 +18,7 @@ Named snap points, smooth scroll handoff, sticky headers and footers, and standa
 
 Click a preview for the full-resolution MP4. Recorded in the Find My app, in light mode. More demos: [tabs](docs/videos/tabs.mp4) · [chat & keyboard](docs/videos/chat.mp4) · [content sizing](docs/videos/contentFit.mp4) · [scroll handoff](docs/videos/scrollHandoff.mp4).
 
-**Android 24+** · [Usage guide](docs/USAGE.md) · [Sample apps](#sample-apps) · [Changelog](CHANGELOG.md)
+**Android 24+ · Compose 1.9+** · [Usage guide](docs/USAGE.md) · [Sample apps](#sample-apps) · [Changelog](CHANGELOG.md)
 
 ## Install
 

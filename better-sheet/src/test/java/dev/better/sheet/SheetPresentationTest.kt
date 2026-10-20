@@ -22,15 +22,6 @@ class SheetPresentationTest {
             previous = next
         }
     }
-    @Test fun shadowDisappearsBeforeTheSurfaceEntersTheNavigationArea() {
-        assertEquals(1f, trayShadowFraction(300f, 1000f, .6f), 0f)
-        assertEquals(0f, trayShadowFraction(600f, 1000f, .6f), 0f)
-        for (height in 600..1100) {
-            assertEquals(0f, trayShadowFraction(height.toFloat(), 1000f, .6f), 0f)
-        }
-        assertTrue(trayShadowFraction(550f, 1000f, .6f) in .49f.. .51f)
-        assertEquals(0f, trayShadowFraction(500f, 1000f, 0f), 0f)
-    }
     @Test(expected = IllegalArgumentException::class)
     fun rejectsInvalidStart() { SheetPresentation.Tray(morphStartFraction = 1f) }
     @Test(expected = IllegalArgumentException::class)

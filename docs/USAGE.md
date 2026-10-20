@@ -362,3 +362,7 @@ Find My also fades its content, so collapse stays smooth on API 24–30. Its min
 point is a permanent People/Chat bar, so it subtracts that collapsed height before
 mapping the last 25% of expansion to blur. Contextual actions sit above the tabs and
 shrink with the same progress; the tabs stay sharp and interactive.
+
+
+Tray shadows use Compose 1.9's `dropShadow`: the blur, opacity, and offset stay constant
+while the tray changes height and shape. They do not fade based on expansion progress.

@@ -134,7 +134,7 @@ class TrayRenderingTest {
         }
     }
 
-    @Test fun heldDragAndReversalDoNotPaintAShelfBelowTheMorphingTray() {
+    @Test fun heldDragAndReversalKeepTheSameSoftShadowAtEveryHeight() {
         lateinit var state: SheetState
         var headerTop = 0f
         var surfaceBottom = 0f
@@ -184,10 +184,11 @@ class TrayRenderingTest {
                 try { instrumentation.sendPointerSync(event) } finally { event.recycle() }
             }
             pointer(MotionEvent.ACTION_DOWN)
+            var previousDarkening: Float? = null
             try {
-                for (direction in listOf(-1f, -1f, 1f)) {
+                for (delta in listOf(-distance, -distance / 2f, distance / 2f)) {
                     repeat(12) {
-                        y += direction * distance / 12f
+                        y += delta / 12f
                         pointer(MotionEvent.ACTION_MOVE)
                         SystemClock.sleep(24)
                     }
@@ -201,10 +202,19 @@ class TrayRenderingTest {
                         val row = (surfaceBottom.toInt() + 2).coerceAtMost(shot.height - 2)
                         val outside = shot.getPixel(2, row)
                         val beneath = shot.getPixel(shot.width / 3, row)
-                        for (channel in listOf<(Int) -> Int>(android.graphics.Color::red, android.graphics.Color::green, android.graphics.Color::blue)) {
-                            assertEquals("An offset shadow shelf appeared under the held tray at $progress",
-                                channel(outside).toFloat(), channel(beneath).toFloat(), 3f)
+                        val darkening = (android.graphics.Color.green(outside) - android.graphics.Color.green(beneath)).toFloat()
+                        assertTrue("The floating shadow disappeared while dragging at $progress", darkening > 2f)
+                        previousDarkening?.let { previous ->
+                            assertEquals("Shadow strength changed with tray height or drag direction at $progress",
+                                previous, darkening, 4f)
                         }
+                        previousDarkening = darkening
+                        // A diffuse shadow must fade away from the edge, not form an offset slab.
+                        val furtherY = (row + 6).coerceAtMost(shot.height - 2)
+                        val outsideFurther = shot.getPixel(2, furtherY)
+                        val further = shot.getPixel(shot.width / 3, furtherY)
+                        val furtherDarkening = android.graphics.Color.green(outsideFurther) - android.graphics.Color.green(further)
+                        assertTrue("Shadow has a hard offset shelf at $progress", furtherDarkening <= darkening + 2f)
                     } finally { shot.recycle() }
                 }
             } finally { pointer(MotionEvent.ACTION_UP) }

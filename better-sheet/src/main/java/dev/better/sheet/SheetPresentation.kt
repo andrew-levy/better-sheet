@@ -46,18 +46,6 @@ internal fun trayMorphFraction(visibleHeight: Float, availableHeight: Float, sta
     return t * t * (3f - 2f * t)
 }
 
-/**
- * Let the full rounded shadow fade before the tray enters the navigation area. Keeping a
- * directional elevation shadow during that morph makes an offset, translucent shelf below it;
- * cutting it off at the bottom instead leaves hard seams beside the rounded corners.
- */
-internal fun trayShadowFraction(visibleHeight: Float, availableHeight: Float, morphStart: Float): Float {
-    if (availableHeight <= 0f || morphStart <= 0f) return 0f
-    val fadeStart = (morphStart - 0.1f).coerceAtLeast(0f)
-    val t = ((visibleHeight / availableHeight - fadeStart) / (morphStart - fadeStart)).coerceIn(0f, 1f)
-    return 1f - t * t * (3f - 2f * t)
-}
-
 @Composable
 internal fun rememberSheetDeviceCornerRadius(): Float {
     val view = LocalView.current

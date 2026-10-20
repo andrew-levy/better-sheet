@@ -3,6 +3,10 @@ package dev.better.sheet
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
@@ -36,11 +40,19 @@ internal fun Modifier.sheetNavigationCover(color: Color, heightPx: Float): Modif
     if (height > 0f) drawRect(color, Offset(0f, size.height - height), Size(size.width, height))
 }
 
-/** Floating trays need a complete shadow; edge-attached sheets stop at the navigation area. */
+/**
+ * A tray's depth must not change when its height changes. Android elevation projects a spot
+ * shadow from the window light source, which can look like a second offset tray while morphing.
+ * A fixed drop shadow follows the same animated outline without changing blur, opacity or offset.
+ * Standard sheets still keep their elevation shadow out of the navigation area.
+ */
 internal fun Modifier.sheetSurfaceShadow(elevation: Dp, shape: Shape, floating: Boolean): Modifier =
-    (if (floating) this else drawWithContent {
+    if (floating) dropShadow(
+        shape = shape,
+        shadow = Shadow(radius = elevation, color = Color.Black.copy(alpha = 0.2f), offset = DpOffset(0.dp, 2.dp)),
+    ) else drawWithContent {
         val spread = elevation.toPx() * 3f
         clipRect(left = -spread, top = -spread, right = size.width + spread, bottom = size.height) {
             this@drawWithContent.drawContent()
         }
-    }).shadow(elevation, shape, clip = false)
+    }.shadow(elevation, shape, clip = false)
