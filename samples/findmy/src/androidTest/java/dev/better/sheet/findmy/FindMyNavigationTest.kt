@@ -1,5 +1,7 @@
 package dev.better.sheet.findmy
 
+import androidx.compose.ui.unit.width
+import androidx.compose.ui.unit.height
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
