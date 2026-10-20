@@ -6,6 +6,21 @@ public API.
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-10-20
+
+### Fixed
+
+- Keep Find My grab bars visible when their sheets are covered by another sheet.
+  Callers continue to control visibility through the custom `dragHandle` composable.
+
+### Changed
+
+- Make entrance-rendering tests independent of screenshot latency while retaining
+  checks for real rendered motion, first opening, and reopening.
+- Compile test APKs before emulator startup, reduce test-driver memory use, and wait
+  for Android services before testing on API 24 and 35.
+- Preserve continuous Android logs and system diagnostics for device-test failures.
+
 ## [0.6.1] - 2026-10-19
 
 ### Fixed
@@ -176,3 +191,5 @@ Initial public release.
 [0.6.0]: https://github.com/andrew-levy/better-sheet/releases/tag/0.6.0
 
 [0.6.1]: https://github.com/andrew-levy/better-sheet/releases/tag/0.6.1
+
+[0.6.2]: https://github.com/andrew-levy/better-sheet/releases/tag/0.6.2
