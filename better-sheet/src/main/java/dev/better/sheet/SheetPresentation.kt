@@ -1,5 +1,6 @@
 package dev.better.sheet
 
+import kotlin.math.abs
 import android.os.Build
 import android.view.RoundedCorner
 import android.view.ViewTreeObserver
@@ -20,7 +21,8 @@ public sealed interface SheetPresentation {
      * fraction of available height, not of the largest detent: a short sheet stays a tray.
      * Tray owns its rounded shape (the sheet's `shape` applies to Standard only).
      * [matchDeviceCorners] uses reported Android 12+ bottom corners when the host fills its
-     * window; otherwise [cornerRadius] is the fallback. This does not apply a glass material.
+     * window and the side/bottom gaps from its edges are equal; otherwise [cornerRadius]
+     * is the fallback. The bottom gap includes navigation-bar or keyboard clearance. This does not apply a glass material.
      */
     @Immutable
     public data class Tray(
@@ -69,4 +71,23 @@ internal fun rememberSheetDeviceCornerRadius(): Float {
         onDispose { if (observer.isAlive) observer.removeOnPreDrawListener(listener) }
     }
     return radius
+}
+
+/**
+ * A circular screen corner and an inset surface are concentric only when their horizontal
+ * and vertical offsets agree. All values are pixels, including navigation/IME clearance.
+ * Never turn a large bottom safe area into an unexpectedly square floating tray.
+ */
+internal fun trayCornerRadius(
+    deviceRadius: Float,
+    horizontalGap: Float,
+    bottomGap: Float,
+    fallback: Float,
+    matchDeviceCorners: Boolean,
+    hostReachesWindowEdges: Boolean,
+): Float {
+    if (!matchDeviceCorners || !hostReachesWindowEdges || deviceRadius <= 0f ||
+        !deviceRadius.isFinite() || abs(horizontalGap - bottomGap) > 1f
+    ) return fallback
+    return (deviceRadius - horizontalGap).coerceAtLeast(0f)
 }

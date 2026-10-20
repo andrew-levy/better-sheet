@@ -295,13 +295,17 @@ Available on `BetterSheet`, `BetterSheetHost`, and `BetterModalSheet`. Defaults 
 and bottom gaps, 32.dp fallback corners, 28.dp expanded top corners, and morphing over the final
 40% of available height. Customize with `horizontalInset`, `bottomInset`, `cornerRadius`,
 `expandedCornerRadius`, `morphStartFraction`, and `matchDeviceCorners`. Android 12+ reported
-window corners inform the collapsed radius; use `matchDeviceCorners = false` for an explicit
+window corners inform the collapsed radius only when the side and bottom gaps from the window
+edges are equal (within one pixel). The bottom gap includes navigation-bar or keyboard clearance;
+unequal gaps use the configured 32.dp fallback rather than claiming a concentric match. Use `matchDeviceCorners = false` for an explicit
 radius. Matching applies to collapsed corners; expanded top corners use `expandedCornerRadius`.
 Unavailable metadata, embedded hosts, and width-capped surfaces use the configured fallback.
 This matches a reported circular radius, not every device's physical corner contour. Tray owns its shape; `shape` remains the Standard presentation's setting.
 
 Dragging, reversing, and programmatic snap changes all drive the same morph. Short sheets stay
-floating; navigation/keyboard safe areas remain protected. The existing `maxWidth` still applies
+floating above navigation buttons or the gesture area, with the configured bottom gap;
+navigation/keyboard safe areas remain protected. As it expands, the background extends behind
+the navigation controls while content remains above them. The existing `maxWidth` still applies
 on tablets. This adds the geometry, not Liquid Glass blur/refraction. Try **Floating tray** in
 the sample gallery or the people sheet in the Find My sample. Reproduce the recording with
 `python3 scripts/record-demos.py tray`.

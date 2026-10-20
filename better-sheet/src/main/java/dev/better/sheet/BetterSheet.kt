@@ -322,8 +322,16 @@ public fun BetterSheetHost(
         // Move the surface into the navigation area while reserving the same space inside it.
         val navExtension = if (tray != null && !keyboardCoversNav) navInset * morph else 0f
         val radius = tray?.let {
-            val reported = with(density) { deviceCornerRadius.toDp() } - it.horizontalInset
-            if (it.matchDeviceCorners && hostReachesWindowEdges && deviceCornerRadius > 0f) reported.coerceAtLeast(0.dp) else it.cornerRadius
+            with(density) {
+                trayCornerRadius(
+                    deviceRadius = deviceCornerRadius,
+                    horizontalGap = it.horizontalInset.toPx(),
+                    bottomGap = bottomInset + it.bottomInset.toPx(),
+                    fallback = it.cornerRadius.toPx(),
+                    matchDeviceCorners = it.matchDeviceCorners,
+                    hostReachesWindowEdges = hostReachesWindowEdges,
+                ).toDp()
+            }
         } ?: 0.dp
         val surfaceShape = if (tray == null) shape else RoundedCornerShape(
             topStart = radius * (1f - morph) + tray.expandedCornerRadius * morph,

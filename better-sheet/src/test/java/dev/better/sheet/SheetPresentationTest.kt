@@ -28,4 +28,23 @@ class SheetPresentationTest {
     fun rejectsNegativeInsets() { SheetPresentation.Tray(bottomInset = (-1).dp) }
     @Test(expected = IllegalArgumentException::class)
     fun rejectsUnspecifiedRadius() { SheetPresentation.Tray(cornerRadius = androidx.compose.ui.unit.Dp.Unspecified) }
+
+    @Test fun equalGapsMatchTheReportedScreenCorner() {
+        assertEquals(38f, trayCornerRadius(50f, 12f, 12f, 32f, true, true), 0f)
+        assertEquals(0f, trayCornerRadius(10f, 12f, 12f, 32f, true, true), 0f)
+    }
+
+    @Test fun navigationAndKeyboardClearanceUseTheFallback() {
+        // The floating surface sits above system controls, in addition to its own gap.
+        for (safeBottom in listOf(24f, 48f, 300f)) {
+            assertEquals(32f, trayCornerRadius(50f, 12f, safeBottom + 12f, 32f, true, true), 0f)
+        }
+        assertEquals(32f, trayCornerRadius(50f, 12f, 20f, 32f, true, true), 0f)
+    }
+
+    @Test fun unavailableOrInapplicableDeviceCornersUseTheConfiguredRadius() {
+        assertEquals(27f, trayCornerRadius(0f, 12f, 12f, 27f, true, true), 0f)
+        assertEquals(27f, trayCornerRadius(50f, 12f, 12f, 27f, false, true), 0f)
+        assertEquals(27f, trayCornerRadius(50f, 12f, 12f, 27f, true, false), 0f)
+    }
 }
