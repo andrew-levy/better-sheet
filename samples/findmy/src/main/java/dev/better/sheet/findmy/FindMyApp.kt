@@ -527,7 +527,7 @@ private fun MainSheet(
         contentColor = colors.ink,
         scrimColor = Color.Unspecified,
         dragHandle = {
-            Box(Modifier.testTag(if (front) "sheet-header" else "main-handle")) { Handle(showBar = front) }
+            Box(Modifier.testTag(if (front) "sheet-header" else "main-handle")) { Handle() }
         },
         footer = { MainTabs(tab, onTabSelected) },
     ) {
@@ -653,7 +653,7 @@ private fun PersonSheet(
         contentColor = colors.ink,
         scrimColor = Color.Unspecified,
         shape = RoundedCornerShape(topStart = SheetCorner, topEnd = SheetCorner),
-        dragHandle = { Handle(showBar = front) },
+        dragHandle = { Handle() },
         header = {
             Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).testTag("sheet-header")) {
                 Row(verticalAlignment = Alignment.Top) {
@@ -956,12 +956,10 @@ private fun StopSharingSheet(friend: Friend, onDismissed: () -> Unit, onProgress
 }
 
 @Composable
-private fun Handle(showBar: Boolean = true) {
+private fun Handle() {
     val colors = findColors()
     Box(Modifier.fillMaxWidth().height(20.dp), contentAlignment = Alignment.Center) {
-        if (showBar) {
-            Box(Modifier.size(36.dp, 5.dp).clip(RoundedCornerShape(3.dp)).background(colors.handle))
-        }
+        Box(Modifier.size(36.dp, 5.dp).clip(RoundedCornerShape(3.dp)).background(colors.handle))
     }
 }
 
