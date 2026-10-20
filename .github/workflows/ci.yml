@@ -20,7 +20,7 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v6
       - run: chmod +x gradlew
-      - run: ./gradlew :better-sheet:testDebugUnitTest :better-sheet:lintRelease :sample:assembleDebug :sample:assembleDebugAndroidTest :findmy:assembleDebug
+      - run: ./gradlew :better-sheet:testDebugUnitTest :better-sheet:lintRelease :sample:assembleDebug :sample:assembleDebugAndroidTest :findmy:assembleDebug :findmy:assembleDebugAndroidTest
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -28,6 +28,7 @@ jobs:
           path: |
             **/build/reports/
             samples/sample/build/outputs/apk/
+            samples/findmy/build/outputs/apk/
   device:
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -70,14 +71,17 @@ jobs:
             adb shell settings put global hide_error_dialogs 1
             adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS
             ./gradlew :sample:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.better.sheet.sample.SheetUiTest,dev.better.sheet.sample.SheetMotionTest,dev.better.sheet.sample.FragmentSheetTest,dev.better.sheet.sample.HeavyContentMotionTest,dev.better.sheet.sample.TrayRenderingTest,dev.better.sheet.sample.AnimationCustomizationTest,dev.better.sheet.sample.EntranceRenderingTest
+            ./gradlew :findmy:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.better.sheet.findmy.FindMyNavigationTest
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: device-reports-${{ matrix.api }}
-          path: samples/sample/build/reports/androidTests/
+          path: |
+            samples/sample/build/reports/androidTests/
+            samples/findmy/build/reports/androidTests/
   demos:
     env:
-      SCENARIOS: snapPoints chat contentFit stacked heavyContent scrollHandoff tray animations
+      SCENARIOS: snapPoints tabs chat contentFit stacked scrollHandoff tray
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
@@ -107,6 +111,7 @@ jobs:
           target: default
           profile: pixel_4
           disk-size: 2048M
+          ram-size: 3072M
           disable-animations: false
           script: |
             adb shell settings put global hide_error_dialogs 1
@@ -152,7 +157,7 @@ jobs:
         if: steps.current.outputs.publish == 'true'
         env:
           RECORDINGS: ${{ runner.temp }}/demo-videos
-          SCENARIOS: snapPoints chat contentFit stacked heavyContent scrollHandoff tray animations
+          SCENARIOS: snapPoints tabs chat contentFit stacked scrollHandoff tray
           BRANCH_NAME: ${{ github.ref_name }}
         run: |
           python3 - <<'PY'

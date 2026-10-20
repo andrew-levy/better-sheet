@@ -354,7 +354,7 @@ public fun BetterSheetHost(
                 .padding(horizontal = traySide)
                 .then(surfaceModifier)
                 .sheetSurfaceShadow(
-                    if (tray == null) 16.dp else 16.dp * (1f - morph),
+                    16.dp,
                     surfaceShape,
                     floating = tray != null,
                 )

@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -52,7 +53,9 @@ private val MeDot = LatLng(35.9131, -78.8102)
  */
 internal class TownMapController {
     var map: MapLibreMap? = null
-    var night by mutableStateOf(true)
+    var rendered by mutableStateOf(false)
+
+    var night by mutableStateOf(false)
         private set
 
     fun recenter(selected: Friend?) {
@@ -75,7 +78,7 @@ internal class TownMapController {
 
     internal fun attach(map: MapLibreMap) {
         this.map = map
-        map.setStyle(STYLE_NIGHT)
+        map.setStyle(if (night) STYLE_NIGHT else STYLE_DAY)
         map.uiSettings.apply {
             isTiltGesturesEnabled = false
             isCompassEnabled = false
@@ -111,13 +114,14 @@ internal fun TownMap(
             MapLibre.getInstance(context)
             val options = MapLibreMapOptions.createFromAttributes(context, null)
                 .textureMode(true)
-                .foregroundLoadColor(0xFF1C1C1E.toInt())
+                .foregroundLoadColor(backdrop.toArgb())
                 .camera(
                     CameraPosition.Builder().target(HomeTarget).zoom(14.35).build(),
                 )
             MapView(context, options).apply {
+                addOnDidFinishRenderingMapListener { fully -> if (fully) controller.rendered = true }
                 onCreate(null)
-                setBackgroundColor(0xFF1C1C1E.toInt())
+                setBackgroundColor(backdrop.toArgb())
                 getMapAsync { controller.attach(it) }
             }
         }.getOrNull()
@@ -169,7 +173,7 @@ internal fun TownMap(
             move?.let { listener -> mapView.getMapAsync { it.removeOnCameraMoveListener(listener) } }
         }
     }
-    Box(modifier.semantics { contentDescription = "Map" }) {
+    Box(modifier.semantics { contentDescription = "Map"; stateDescription = if (controller.rendered) "Map ready" else "Map loading" }) {
         AndroidView(factory = { mapView }, modifier = Modifier.matchParentSize())
         me?.let { point ->
             Box(

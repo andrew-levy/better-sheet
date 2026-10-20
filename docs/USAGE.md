@@ -344,3 +344,25 @@ and `ExitTransition.None` skip the surface transition. The scrim has a short ind
 `jumpTo(id)`. Move `rememberSheetState(animationSpec = …)` to the composable's
 `snapAnimationSpec`; enter/exit timing is configured directly on Compose transitions.
 
+
+
+## Coordinating content with sheet progress
+
+`state.progress` updates during drags and animations: 0 is hidden and 1 is the full
+available height. Use it directly to drive opacity, blur, color, or scale, without a
+second animation lagging behind the finger:
+
+```kotlin
+val closing = (1f - state.progress / 0.25f).coerceIn(0f, 1f)
+Column(Modifier.blur((16f * closing).dp)) { SheetContent() }
+```
+
+Compose content blur is supported on Android 12+; it is ignored on older devices.
+Find My also fades its content, so collapse stays smooth on API 24–30. Its minimum snap
+point is a permanent People/Chat bar, so it subtracts that collapsed height before
+mapping the last 25% of expansion to blur. Contextual actions sit above the tabs and
+shrink with the same progress; the tabs stay sharp and interactive.
+
+
+Tray shadows use Compose 1.9's `dropShadow`: the blur, opacity, and offset stay constant
+while the tray changes height and shape. They do not fade based on expansion progress.

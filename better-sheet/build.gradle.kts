@@ -16,7 +16,7 @@ android {
     kotlinOptions { jvmTarget = "17" }
 }
 dependencies {
-    api(platform("androidx.compose:compose-bom:2025.06.01"))
+    api(platform("androidx.compose:compose-bom:2025.08.00"))
     api("androidx.compose.foundation:foundation")
     api("androidx.compose.animation:animation")
     api("androidx.compose.ui:ui")

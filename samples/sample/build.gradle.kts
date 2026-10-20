@@ -24,8 +24,8 @@ android {
 }
 dependencies {
     implementation(project(":better-sheet"))
-    implementation(platform("androidx.compose:compose-bom:2025.06.01"))
-    androidTestImplementation(platform("androidx.compose:compose-bom:2025.06.01"))
+    implementation(platform("androidx.compose:compose-bom:2025.08.00"))
+    androidTestImplementation(platform("androidx.compose:compose-bom:2025.08.00"))
     implementation("androidx.activity:activity-compose:1.10.1")
     implementation("androidx.fragment:fragment-ktx:1.8.8")
     implementation("androidx.compose.material3:material3")
