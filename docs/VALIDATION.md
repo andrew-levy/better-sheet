@@ -17,29 +17,28 @@ the IME ignores show requests while the sheet's dialog window lacks focus; the t
 that window to be focused, CI hides system error dialogs that can steal focus, and failures report
 the focused window.
 
-## Demo recordings — October 15, 2026
+## Find My recordings
 
-Five `DemoRecordingTest` scenarios are published in `docs/videos/`, captured on an API 35 emulator
-at 1080 × 2280, density 440. Detents, chat, content fit, and stacked are from October 15.
-Heavy content is the October 13 capture; that screen has not changed.
+The recording pipeline now targets the real Find My app in light mode. Each scenario
+waits for MapLibre to render its tiles before capturing:
 
-- detents: peek, expanded, medium, list scroll handoff and close
-- chat: keyboard expansion, typing, sending and keyboard dismissal
-- contentFit: options added and removed with live animated sizing, then close
-- stacked: a plan sheet, a detail sheet on top of it, then a review sheet, each closed from the top
-- heavyContent: skeleton rows during opening, then the loaded thread, a scroll, expand and close
+- `snapPoints`: people list at peek, expanded, medium, and the permanent collapsed tab bar
+- `tabs`: animated People/Chat changes, including reopening from the tab bar
+- `tray`: frame-by-frame drag reversal, tray morphing, and progress-driven fade/blur
+- `chat`: keyboard expansion, composing, sending, keyboard dismissal, and collapse
+- `contentFit`: person details resizing as nearby places are added and removed
+- `stacked`: person details, contact information, and notification sheets
+- `scrollHandoff`: list scrolling followed by a captured handle drag and collapse
 
-The protected, persistent, and sticky-actions clips are no longer recorded.
+`FindMyNavigationTest` checks the persistent minimum height, tab selection, retained drafts,
+unchanged footer position, and Back collapsing rather than hiding on API 24 and 35.
+The sample gallery remains the focused library regression suite.
 
-The software-rendered CI emulator composites only about 2.5 frames per second, so `screenrecord`
-missed most sheet motion. Clips are therefore captured frame by frame: the test advances the paused
-Compose clock by 32 ms, waits for that frame to reach the display, and screenshots the full screen,
-including dialog and IME windows. Frames are assembled into constant 30 fps H.264 with `faststart`,
-and GIFs derive from those MP4s. Compose motion keeps its real timing; the IME animates on the
-device clock and can appear abruptly. These are real sample screenshots, not frame-time benchmarks
-or open-latency measurements.
-
-Representative frames were reviewed for opening, detent, resize, keyboard and closing states.
+The software-rendered CI emulator misses motion with `screenrecord`, so clips capture
+one screenshot per 32 ms of paused Compose time and encode native-resolution 30 fps
+H.264 MP4s plus 540 px GIF previews directly from the captured frames. The map and IME
+use the device clock; these videos demonstrate behavior, not frame-time performance.
+Recordings publish only after build, device tests, and every recording pass.
 
 ## Heavy content while opening — October 13, 2026
 

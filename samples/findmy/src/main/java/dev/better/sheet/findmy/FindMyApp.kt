@@ -1,5 +1,21 @@
 package dev.better.sheet.findmy
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -66,11 +82,15 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
@@ -185,7 +205,11 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
     is ContextWrapper -> baseContext.findActivity()
     else -> null
 }
-private val PeopleDetents = listOf(
+// Handle (20) + tabs (68) + floating tray gap (12). Contextual footers live in the body,
+// so neither the collapsed anchor nor the tab bar moves when the selected tab changes.
+private val CollapsedHeight = 100.dp
+private val MainSnapPoints = listOf(
+    SheetSnapPoint.fixed("collapsed", CollapsedHeight),
     SheetSnapPoint.fixed("peek", 340.dp),
     SheetSnapPoint.fraction("medium", 0.56f),
     SheetSnapPoint.expanded(),
@@ -233,10 +257,12 @@ internal fun FindMyApp() {
     ) {
         CompositionLocalProvider(LocalFindColors provides colors, LocalContentColor provides colors.ink) {
         val scope = rememberCoroutineScope()
-        val people = rememberSheetState(initialSnapPoint = "medium", initiallyVisible = false)
+        val focus = LocalFocusManager.current
+        val keyboard = LocalSoftwareKeyboardController.current
+        val people = rememberSheetState(initialSnapPoint = "medium")
         val personState = rememberSheetState(initialSnapPoint = "content", initiallyVisible = false)
         var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
-        var chatOpen by rememberSaveable { mutableStateOf(false) }
+        var tab by rememberSaveable { mutableStateOf("People") }
         var contactFor by rememberSaveable { mutableStateOf<String?>(null) }
         var notifyOpen by rememberSaveable { mutableStateOf(false) }
         var stopSharing by rememberSaveable { mutableStateOf(false) }
@@ -245,11 +271,15 @@ internal fun FindMyApp() {
         var notifyProgress by remember { mutableFloatStateOf(0f) }
         var stopProgress by remember { mutableFloatStateOf(0f) }
         val selected = friends.find { it.id == selectedId }
-        val overlay = chatOpen || contactFor != null || notifyOpen || stopSharing
+        val overlay = contactFor != null || notifyOpen || stopSharing
         val peopleFront = selected == null && !overlay
 
         LaunchedEffect(selectedId) { mapController.recenter(friends.find { it.id == selectedId }) }
-        DemoControls.Bind("people", people, enabled = peopleFront)
+        DemoControls.Bind("people", people, enabled = peopleFront && tab == "People")
+        DemoControls.Bind("chat", people, enabled = peopleFront && tab == "Chat")
+        BackHandler(enabled = peopleFront && people.targetSnapPoint != "collapsed") {
+            scope.launch { people.snapTo("collapsed") }
+        }
         SideEffect {
             if (contactFor == null) contactProgress = 0f
             if (!notifyOpen) notifyProgress = 0f
@@ -271,7 +301,7 @@ internal fun FindMyApp() {
                 notifyProgress,
                 stopProgress,
             )
-            val controlsClear = if (sheetLift > 0.02f) sheetLift * available + bottomInset else bottomInset + with(density) { 76.dp.toPx() }
+            val controlsClear = sheetLift * (available - with(density) { 24.dp.toPx() }) + bottomInset
             SideEffect { mapController.insets(controlsClear.toInt()) }
 
             TownMap(
@@ -284,7 +314,7 @@ internal fun FindMyApp() {
             val titleAlpha = if (selected != null) 0f else ((0.78f - people.progress) / 0.22f).coerceIn(0f, 1f)
             if (titleAlpha > 0.02f) {
                 Text(
-                    "People",
+                    tab,
                     modifier = Modifier.statusBarsPadding().padding(start = 20.dp, top = 8.dp),
                     color = colors.ink.copy(alpha = titleAlpha),
                     fontSize = 34.sp,
@@ -304,9 +334,17 @@ internal fun FindMyApp() {
                 }
             }
 
-            PeopleSheet(
+            MainSheet(
                 state = people,
                 front = peopleFront,
+                tab = tab,
+                onTabSelected = {
+                    if (it != tab) { focus.clearFocus(); keyboard?.hide() }
+                    tab = it
+                    if (people.targetSnapPoint == "collapsed") scope.launch { people.snapTo("medium") }
+                },
+                collapsedFraction = with(density) { CollapsedHeight.toPx() } /
+                    (available - with(density) { 24.dp.toPx() }).coerceAtLeast(1f),
                 onSelect = { selectedId = it.id; places = false },
             )
             if (selected != null) {
@@ -335,24 +373,8 @@ internal fun FindMyApp() {
                 )
             }
 
-            if (!people.isVisible && selected == null && !overlay) {
-                PeopleButton(
-                    onClick = { scope.launch { people.show("medium") } },
-                    modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(start = 16.dp, bottom = 16.dp),
-                )
-            }
-            if (!chatOpen && sheetLift < 0.92f) {
-                ChatFab(
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp),
-                    lift = with(density) { (if (sheetLift > 0.02f) sheetLift * available + bottomInset else bottomInset.toFloat()).toDp() } + 16.dp,
-                    onClick = { chatOpen = true },
-                )
-            }
         }
 
-        if (chatOpen) {
-            ChatSheet(onDismissed = { chatOpen = false })
-        }
         contactFor?.let { id ->
             val friend = friends.first { it.id == id }
             ContactSheet(
@@ -373,40 +395,132 @@ internal fun FindMyApp() {
 }
 
 @Composable
-private fun PeopleSheet(state: SheetState, front: Boolean, onSelect: (Friend) -> Unit, modifier: Modifier = Modifier) {
+private fun MainSheet(
+    state: SheetState,
+    front: Boolean,
+    tab: String,
+    onTabSelected: (String) -> Unit,
+    collapsedFraction: Float,
+    onSelect: (Friend) -> Unit,
+) {
     val colors = findColors()
+    val peopleList = rememberLazyListState()
+    val history = remember { chatHistory() }
+    val chatList = rememberLazyListState(initialFirstVisibleItemIndex = history.size)
+    var draft by rememberSaveable { mutableStateOf("") }
+    val sent = remember { mutableStateListOf<ChatLine>() }
+    val messages = history + sent
+    LaunchedEffect(sent.size) { if (sent.isNotEmpty()) chatList.pinToEnd() }
+    val expansion = ((state.progress - collapsedFraction) / (1f - collapsedFraction)).coerceIn(0f, 1f)
+    // Drive the effect directly from sheet position: the final quarter above the tab bar.
+    val closing = (1f - expansion / 0.25f).coerceIn(0f, 1f)
     BetterSheetHost(
         state = state,
-        snapPoints = PeopleDetents,
+        snapPoints = MainSnapPoints,
         presentation = SheetPresentation.Tray(),
-        modifier = modifier,
         behavior = SheetBehavior(
-            keyboardBehavior = SheetKeyboardBehavior.Ignore,
+            keyboardBehavior = if (tab == "Chat") SheetKeyboardBehavior.Expand else SheetKeyboardBehavior.Ignore,
             scrimEnabled = false,
+            dismissOnDrag = false,
+            dismissOnBack = false,
             dismissOnScrim = false,
+            draggable = front,
         ),
         bodyMode = SheetBodyMode.Fill,
-        title = "People",
+        title = tab,
         containerColor = colors.sheet,
         contentColor = colors.ink,
         scrimColor = Color.Unspecified,
-        shape = RoundedCornerShape(topStart = SheetCorner, topEnd = SheetCorner),
-        dragHandle = { Handle(showBar = front) },
-        footer = {
-            MeRow(Modifier.testTag(if (front) "footer" else "people-footer"))
+        dragHandle = {
+            Box(Modifier.testTag(if (front) "sheet-header" else "main-handle")) { Handle(showBar = front) }
         },
+        footer = { MainTabs(tab, onTabSelected) },
     ) {
-        val list = rememberLazyListState()
-        LazyColumn(
-            state = list,
-            modifier = Modifier.fillMaxSize().testTag(if (front) "body-list" else "people-list"),
-            contentPadding = PaddingValues(top = 4.dp, bottom = 8.dp),
-        ) {
-            items(friends, key = { it.id }) { friend ->
-                PersonRow(friend, Modifier.testTag("person-${friend.id}"), onClick = { onSelect(friend) })
+        AnimatedContent(
+            targetState = tab,
+            modifier = Modifier.fillMaxSize().blur((16f * closing).dp)
+                .graphicsLayer { alpha = 1f - closing }
+                .then(if (expansion <= 0.001f) Modifier.clearAndSetSemantics {} else Modifier),
+            transitionSpec = {
+                val direction = if (targetState == "Chat") 1 else -1
+                (fadeIn(tween(220)) + slideInHorizontally(tween(260)) { direction * it / 12 })
+                    .togetherWith(fadeOut(tween(140)) + slideOutHorizontally(tween(260)) { -direction * it / 12 })
+                    .using(null)
+            },
+            label = "People and chat",
+        ) { selectedTab ->
+            Column(Modifier.fillMaxSize()) {
+                if (selectedTab == "People") {
+                    LazyColumn(
+                        state = peopleList,
+                        modifier = Modifier.weight(1f).fillMaxWidth().testTag(if (front) "people-list" else "covered-people-list"),
+                        contentPadding = PaddingValues(top = 4.dp, bottom = 8.dp),
+                    ) {
+                        item(key = "title") { TabTitle("People") }
+                        items(friends, key = { it.id }) { friend ->
+                            PersonRow(friend, Modifier.testTag("person-${friend.id}"), onClick = { onSelect(friend) })
+                        }
+                    }
+                    MeRow(Modifier.revealHeight(1f - closing).testTag("people-footer"))
+                } else {
+                    ChatContent(messages, chatList, Modifier.weight(1f).fillMaxWidth())
+                    ChatComposer(
+                        draft = draft,
+                        onDraftChange = { draft = it },
+                        onSend = {
+                            if (draft.isNotBlank()) {
+                                sent.add(ChatLine(draft.trim(), mine = true))
+                                draft = ""
+                            }
+                        },
+                        modifier = Modifier.revealHeight(1f - closing),
+                    )
+                }
             }
         }
     }
+}
+
+@Composable
+private fun TabTitle(title: String) {
+    Text(title, Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+        color = findColors().ink, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+}
+
+@Composable
+private fun MainTabs(tab: String, onTabSelected: (String) -> Unit) {
+    val colors = findColors()
+    Row(
+        Modifier.fillMaxWidth().height(68.dp).padding(horizontal = 10.dp, vertical = 6.dp)
+            .testTag("main-tabs").semantics { stateDescription = tab },
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        listOf("People", "Chat").forEach { name ->
+            val selected = tab == name
+            val background by animateColorAsState(
+                if (selected) colors.link.copy(alpha = 0.12f) else Color.Transparent,
+                tween(220), label = "Selected tab",
+            )
+            Column(
+                Modifier.weight(1f).fillMaxSize().clip(RoundedCornerShape(28.dp)).background(background)
+                    .selectable(selected = selected, role = Role.Tab, onClick = { onTabSelected(name) })
+                    .testTag("tab-${name.lowercase()}"),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                val tint = if (selected) colors.link else colors.mist
+                Icon(if (name == "People") Icons.Filled.Person else Icons.AutoMirrored.Filled.Chat,
+                    contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
+                Text(name, color = tint, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+/** Shrink contextual actions with the drag, keeping the permanent tabs at a fixed height. */
+private fun Modifier.revealHeight(fraction: Float): Modifier = this.clipToBounds().layout { measurable, constraints ->
+    val child = measurable.measure(constraints.copy(minHeight = 0))
+    layout(child.width, (child.height * fraction).toInt()) { child.placeRelative(0, 0) }
 }
 
 @Composable
@@ -527,109 +641,48 @@ private fun PersonSheet(
 private val nearbyPlaces = listOf("Dunkin'" to "0.2 mi", "Food Lion" to "0.6 mi", "Morrisville Library" to "1.1 mi")
 
 @Composable
-private fun ChatSheet(onDismissed: () -> Unit) {
+private fun ChatComposer(draft: String, onDraftChange: (String) -> Unit, onSend: () -> Unit, modifier: Modifier = Modifier) {
     val colors = findColors()
-    val scope = rememberCoroutineScope()
-    val state = rememberSheetState(initialSnapPoint = "medium")
-    val list = rememberLazyListState()
-    var draft by rememberSaveable { mutableStateOf("") }
-    var history by remember { mutableStateOf<List<ChatLine>?>(null) }
-    val sent = remember { mutableStateListOf<ChatLine>() }
-    LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(280)
-        history = chatHistory()
-    }
-    DemoControls.Bind("chat", state, enabled = true)
-    val messages = history.orEmpty() + sent
-    LaunchedEffect(history) {
-        if (history != null) list.pinToEnd()
-    }
-    LaunchedEffect(sent.size) {
-        if (sent.isEmpty()) return@LaunchedEffect
-        list.pinToEnd()
-    }
-    BetterModalSheet(
-        state = state,
-        snapPoints = PeopleDetents,
-        presentation = SheetPresentation.Tray(),
-        onDismissed = onDismissed,
-        behavior = SheetBehavior(keyboardBehavior = SheetKeyboardBehavior.Expand),
-        bodyMode = SheetBodyMode.Fill,
-        title = "Friends",
-        containerColor = colors.sheet,
-        contentColor = colors.ink,
-        scrimColor = Color.Black.copy(alpha = 0.28f),
-        shape = RoundedCornerShape(topStart = SheetCorner, topEnd = SheetCorner),
-        dragHandle = { Handle() },
-        header = {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Friends", color = colors.ink, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                    Text(if (history == null) "Loading messages…" else "${messages.size} messages", color = colors.mist, fontSize = 13.sp)
-                }
-                CloseButton(Modifier.testTag("close")) { scope.launch { state.hide() } }
-            }
-        },
-        footer = {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp).testTag("footer"),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                OutlinedTextField(
-                    draft,
-                    { draft = it },
-                    modifier = Modifier.weight(1f).testTag("composer"),
-                    placeholder = { Text("Message") },
-                    maxLines = 3,
-                    shape = RoundedCornerShape(24.dp),
-                    colors = glassFieldColors(),
-                )
-                Spacer(Modifier.width(8.dp))
-                Box(
-                    Modifier.size(44.dp).clip(CircleShape).background(colors.link).clickable {
-                        if (draft.isNotBlank()) {
-                            sent.add(ChatLine(draft.trim(), mine = true))
-                        draft = ""
-                        }
-                    }.testTag("send"),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = Color.White, modifier = Modifier.size(18.dp))
-                }
-            }
-        },
+    Row(
+        modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp).testTag("chat-footer"),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (messages.isEmpty()) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                repeat(6) { i ->
-                    Box(
-                        Modifier.fillMaxWidth(if (i % 2 == 0) 0.72f else 0.5f)
-                            .align(if (i % 2 == 0) Alignment.End else Alignment.Start)
-                            .height(48.dp)
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(colors.fill),
-                    )
-                }
-            }
-        } else {
-            LazyColumn(
-                state = list,
-                modifier = Modifier.fillMaxSize().testTag("body-list"),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(messages.size, key = { it }) { index ->
-                    val line = messages[index]
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = if (line.mine) Arrangement.End else Arrangement.Start) {
-                        Text(
-                            line.text,
-                            modifier = Modifier.fillMaxWidth(0.78f).clip(RoundedCornerShape(18.dp))
-                                .background(if (line.mine) colors.link else colors.fillStrong)
-                                .padding(horizontal = 14.dp, vertical = 10.dp),
-                            color = if (line.mine) Color.White else colors.ink,
-                        )
-                    }
-                }
+        OutlinedTextField(
+            draft, onDraftChange,
+            modifier = Modifier.weight(1f).testTag("composer"),
+            placeholder = { Text("Message") }, maxLines = 3,
+            shape = RoundedCornerShape(24.dp), colors = glassFieldColors(),
+        )
+        Spacer(Modifier.width(8.dp))
+        Box(
+            Modifier.size(44.dp).clip(CircleShape).background(colors.link).clickable(onClick = onSend).testTag("send"),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = Color.White, modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
+@Composable
+private fun ChatContent(messages: List<ChatLine>, list: LazyListState, modifier: Modifier = Modifier) {
+    val colors = findColors()
+    LazyColumn(
+        state = list,
+        modifier = modifier.testTag("chat-list"),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item(key = "title") { TabTitle("Friends") }
+        items(messages.size, key = { it }) { index ->
+            val line = messages[index]
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = if (line.mine) Arrangement.End else Arrangement.Start) {
+                Text(
+                    line.text,
+                    modifier = Modifier.fillMaxWidth(0.78f).clip(RoundedCornerShape(18.dp))
+                        .background(if (line.mine) colors.link else colors.fillStrong)
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    color = if (line.mine) Color.White else colors.ink,
+                )
             }
         }
     }
@@ -886,20 +939,6 @@ private fun MapButton(onClick: () -> Unit, icon: @Composable () -> Unit) {
 }
 
 @Composable
-private fun ChatFab(lift: Dp, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val colors = findColors()
-    Box(
-        modifier.padding(bottom = lift).size(52.dp).shadow(8.dp, CircleShape).clip(CircleShape)
-            .background(colors.sheet)
-            .clickable(onClick = onClick)
-            .testTag("chat-fab"),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "Chat", tint = colors.ink, modifier = Modifier.size(22.dp))
-    }
-}
-
-@Composable
 private fun glassFieldColors(): TextFieldColors {
     val colors = findColors()
     return OutlinedTextFieldDefaults.colors(
@@ -915,20 +954,6 @@ private fun glassFieldColors(): TextFieldColors {
         focusedPlaceholderColor = colors.mist,
         unfocusedPlaceholderColor = colors.mist,
     )
-}
-
-@Composable
-private fun PeopleButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val colors = findColors()
-    Row(
-        modifier.shadow(10.dp, CircleShape).clip(CircleShape).background(colors.sheet).clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp).testTag("open-people"),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Icon(Icons.Filled.Person, contentDescription = null, tint = colors.ink, modifier = Modifier.size(18.dp))
-        Text("People", color = colors.ink, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-    }
 }
 
 /** Puts the last item on the bottom edge without pinning later sheet growth to that edge. */

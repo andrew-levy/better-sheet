@@ -10,13 +10,13 @@ Named snap points, smooth scroll handoff, sticky headers and footers, and standa
     <th>Stacked sheets</th>
   </tr>
   <tr>
-    <td><a href="docs/videos/snapPoints.mp4"><img src="docs/videos/snapPoints.gif" width="240" alt="A sheet opening, snapping between heights, and closing"></a></td>
+    <td><a href="docs/videos/snapPoints.mp4"><img src="docs/videos/snapPoints.gif" width="240" alt="The Find My people sheet snapping between expanded content and its tab bar"></a></td>
     <td><a href="docs/videos/tray.mp4"><img src="docs/videos/tray.gif" width="240" alt="An inset tray expanding into an edge-to-edge sheet"></a></td>
-    <td><a href="docs/videos/stacked.mp4"><img src="docs/videos/stacked.gif" width="240" alt="Three stacked sheets receding as each new sheet opens"></a></td>
+    <td><a href="docs/videos/stacked.mp4"><img src="docs/videos/stacked.gif" width="240" alt="Find My person details, contact info, and notification sheets layered over the map"></a></td>
   </tr>
 </table>
 
-Click a preview for the full-resolution MP4. More demos: [animations](docs/videos/animations.mp4) · [chat & keyboard](docs/videos/chat.mp4) · [content sizing](docs/videos/contentFit.mp4) · [scroll handoff](docs/videos/scrollHandoff.mp4).
+Click a preview for the full-resolution MP4. Recorded in the Find My app, in light mode. More demos: [tabs](docs/videos/tabs.mp4) · [chat & keyboard](docs/videos/chat.mp4) · [content sizing](docs/videos/contentFit.mp4) · [scroll handoff](docs/videos/scrollHandoff.mp4).
 
 **Android 24+** · [Usage guide](docs/USAGE.md) · [Sample apps](#sample-apps) · [Changelog](CHANGELOG.md)
 
@@ -109,7 +109,7 @@ BetterModalSheet(
 
 Defaults use a vertical slide and a critically damped spring. Dragging follows your finger;
 release settles with `snapAnimationSpec`. The same controls work on inline sheets.
-[Watch spring, fade, and slide + fade →](docs/videos/animations.mp4)
+Try spring, fade, and slide + fade in the sample app’s **Animations** gallery.
 
 ## Scrolling & keyboard
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Record the real Compose sample frame by frame using adb + instrumentation; no mock UI.
+"""Record the real light-mode Find My app frame by frame using adb + instrumentation; no mock UI.
 
 DemoRecordingTest advances the paused Compose clock one output frame at a time and screenshots the
 device after each frame reaches the display. This script pulls those screenshots and assembles them
@@ -11,8 +11,8 @@ import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
-SCENARIOS = ['snapPoints', 'chat', 'contentFit', 'stacked', 'heavyContent', 'scrollHandoff', 'tray', 'animations']
-PACKAGE = 'dev.better.sheet.sample'
+SCENARIOS = ['snapPoints', 'tabs', 'chat', 'contentFit', 'stacked', 'scrollHandoff', 'tray']
+PACKAGE = 'dev.better.sheet.findmy'
 FRAMES = f'/sdcard/Android/data/{PACKAGE}/files/demo-frames'
 FRAME_MILLIS = 32  # DemoRecordingTest.FRAME_MILLIS
 SCENARIO_TIMEOUT = 900  # seconds
@@ -62,10 +62,10 @@ if __name__ == '__main__':
     if any(name not in SCENARIOS for name in args.scenarios):
         parser.error('Scenarios: ' + ', '.join(SCENARIOS))
     if not args.skip_build:
-        run(str(ROOT / 'gradlew'), ':sample:assembleDebug', ':sample:assembleDebugAndroidTest', cwd=ROOT)
+        run(str(ROOT / 'gradlew'), ':findmy:assembleDebug', ':findmy:assembleDebugAndroidTest', cwd=ROOT)
     run('adb', 'wait-for-device')
-    run('adb', 'install', '-r', str(ROOT / 'samples/sample/build/outputs/apk/debug/sample-debug.apk'))
-    run('adb', 'install', '-r', str(ROOT / 'samples/sample/build/outputs/apk/androidTest/debug/sample-debug-androidTest.apk'))
+    run('adb', 'install', '-r', str(ROOT / 'samples/findmy/build/outputs/apk/debug/findmy-debug.apk'))
+    run('adb', 'install', '-r', str(ROOT / 'samples/findmy/build/outputs/apk/androidTest/debug/findmy-debug-androidTest.apk'))
     run('adb', 'shell', 'settings', 'put', 'secure', 'show_ime_with_hard_keyboard', '1')
     failures = []
     with tempfile.TemporaryDirectory() as work:

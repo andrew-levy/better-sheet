@@ -24,13 +24,17 @@ python3 scripts/record-demos.py
 python3 scripts/record-demos.py chat
 ```
 
-The script builds and installs the sample and its test APK, runs one recording test per scenario,
+The script builds and installs Find My (light mode by default) and its test APK, runs one recording test per scenario,
 and assembles per-frame screenshots into a native-resolution 30 fps MP4 (H.264 CRF 18)
 and a 540 px, 25 fps GIF preview. GIFs use the captured frames directly, with a motion-aware
 palette and error-diffusion dithering to keep text and gradients clean. README previews display at
 240 px wide; clicking opens the full-resolution MP4.
 
-Every source push on every branch records all scenarios. Once build, lint, unit tests,
+Scenarios: `snapPoints`, `tabs`, `chat`, `contentFit`, `stacked`, `scrollHandoff`, and `tray`.
+`tray` includes the progress-driven blur while collapsing to the permanent People/Chat bar.
+The sample gallery remains the library's focused regression suite.
+
+Every source push on every branch records all Find My scenarios. Once build, lint, unit tests,
 API 24/35 device tests, and recordings pass, CI commits the generated GIFs and MP4s back to
 that branch. The README updates automatically. Video-only commits do not start another run,
 and stale runs cannot overwrite newer source commits. You can also run the **Android**
