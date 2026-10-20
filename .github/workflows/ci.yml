@@ -20,6 +20,8 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v6
       - run: chmod +x gradlew
+      - name: Check device runner failure handling
+        run: python3 -m unittest discover -s scripts/tests -v
       - run: ./gradlew :better-sheet:testDebugUnitTest :better-sheet:lintRelease :sample:assembleDebug :sample:assembleDebugAndroidTest :findmy:assembleDebug :findmy:assembleDebugAndroidTest
       - uses: actions/upload-artifact@v4
         if: always()
@@ -54,6 +56,8 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      - name: Compile test APKs before starting the emulator
+        run: ./gradlew --no-daemon --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process :sample:assembleDebug :sample:assembleDebugAndroidTest :findmy:assembleDebug :findmy:assembleDebugAndroidTest
       - uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ matrix.api }}
@@ -63,15 +67,7 @@ jobs:
           disk-size: 2048M
           ram-size: 3072M
           disable-animations: false
-          script: |
-            adb wait-for-device
-            for i in $(seq 1 30); do adb shell pm list packages android > /dev/null 2>&1 && adb shell dumpsys window > /dev/null 2>&1 && break; sleep 2; done
-            sleep 15
-            adb shell settings put secure show_ime_with_hard_keyboard 1
-            adb shell settings put global hide_error_dialogs 1
-            adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS
-            ./gradlew :sample:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.better.sheet.sample.SheetUiTest,dev.better.sheet.sample.SheetMotionTest,dev.better.sheet.sample.FragmentSheetTest,dev.better.sheet.sample.HeavyContentMotionTest,dev.better.sheet.sample.TrayRenderingTest,dev.better.sheet.sample.AnimationCustomizationTest,dev.better.sheet.sample.EntranceRenderingTest
-            ./gradlew :findmy:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.better.sheet.findmy.FindMyNavigationTest
+          script: bash scripts/run-device-tests.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -79,6 +75,7 @@ jobs:
           path: |
             samples/sample/build/reports/androidTests/
             samples/findmy/build/reports/androidTests/
+            device-diagnostics/
   demos:
     env:
       SCENARIOS: snapPoints tabs chat contentFit stacked scrollHandoff tray
