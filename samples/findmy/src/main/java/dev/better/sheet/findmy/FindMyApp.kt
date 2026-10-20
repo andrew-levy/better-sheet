@@ -17,8 +17,6 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -53,6 +51,7 @@ import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonSearch
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -76,7 +75,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -88,7 +86,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -110,6 +107,10 @@ import dev.better.sheet.SheetBodyMode
 import dev.better.sheet.SheetKeyboardBehavior
 import dev.better.sheet.SheetPresentation
 import dev.better.sheet.SheetSnapPoint
+import dev.better.sheet.SheetStackState
+import dev.better.sheet.rememberSheetStackState
+import dev.better.sheet.sheetStackEffect
+import kotlin.math.pow
 import dev.better.sheet.SheetState
 import dev.better.sheet.rememberSheetState
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -259,6 +260,8 @@ internal fun FindMyApp() {
         val focus = LocalFocusManager.current
         val keyboard = LocalSoftwareKeyboardController.current
         val people = rememberSheetState(initialSnapPoint = "medium")
+        val stack = rememberSheetStackState()
+        var nearbyOpen by rememberSaveable { mutableStateOf(false) }
         val personState = rememberSheetState(initialSnapPoint = "content", initiallyVisible = false)
         var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
         var tab by rememberSaveable { mutableStateOf("People") }
@@ -270,12 +273,13 @@ internal fun FindMyApp() {
         var notifyProgress by remember { mutableFloatStateOf(0f) }
         var stopProgress by remember { mutableFloatStateOf(0f) }
         val selected = friends.find { it.id == selectedId }
-        val overlay = contactFor != null || notifyOpen || stopSharing
+        val overlay = nearbyOpen || contactFor != null || notifyOpen || stopSharing
         val peopleFront = selected == null && !overlay
 
         LaunchedEffect(selectedId) { mapController.recenter(friends.find { it.id == selectedId }) }
         DemoControls.Bind("people", people, enabled = peopleFront && tab == "People")
         DemoControls.Bind("chat", people, enabled = peopleFront && tab == "Chat")
+        DemoControls.Bind("person", personState, enabled = selected != null && !overlay)
         val density = LocalDensity.current
         val imeVisible = WindowInsets.ime.getBottom(density) > WindowInsets.navigationBars.getBottom(density)
         BackHandler(enabled = peopleFront && people.targetSnapPoint != "collapsed") {
@@ -334,6 +338,10 @@ internal fun FindMyApp() {
                 MapButton(onClick = { mapController.recenter(selected) }) {
                     Icon(Icons.Filled.MyLocation, contentDescription = "My location", tint = colors.ink, modifier = Modifier.size(20.dp))
                 }
+                MapButton(onClick = { nearbyOpen = true }) {
+                    Icon(Icons.Filled.PersonSearch, contentDescription = "Nearby people", tint = colors.ink,
+                        modifier = Modifier.size(20.dp).testTag("open-nearby"))
+                }
             }
 
             MainSheet(
@@ -350,23 +358,19 @@ internal fun FindMyApp() {
                 onSelect = { selectedId = it.id; places = false },
             )
             if (selected != null) {
-                Box(Modifier.fillMaxSize().pointerInput(Unit) {
-                    awaitEachGesture {
-                        val down = awaitFirstDown(requireUnconsumed = false)
-                        down.consume()
-                        do {
-                            val event = awaitPointerEvent()
-                            event.changes.forEach { it.consume() }
-                        } while (event.changes.any { it.pressed })
-                    }
-                })
                 PersonSheet(
                     friend = selected,
                     state = personState,
+                    stack = stack,
                     front = !overlay,
                     places = places,
                     onTogglePlaces = { places = !places },
-                    onContact = { contactFor = selected.id },
+                    onContact = {
+                        scope.launch {
+                            personState.snapTo("stack")
+                            contactFor = selected.id
+                        }
+                    },
                     onHideLocation = { stopSharing = true },
                     onClosed = {
                         selectedId = null
@@ -377,21 +381,110 @@ internal fun FindMyApp() {
 
         }
 
+        if (nearbyOpen) {
+            NearbyPeopleSheet(
+                onDismissed = { nearbyOpen = false },
+                onSelect = { selectedId = it.id; places = false },
+            )
+        }
         contactFor?.let { id ->
             val friend = friends.first { it.id == id }
             ContactSheet(
                 friend = friend,
+                stack = stack,
                 onNotify = { notifyOpen = true },
-                onDismissed = { contactFor = null },
+                onDismissed = {
+                    contactFor = null
+                    scope.launch { personState.snapTo("content") }
+                },
                 onProgress = { contactProgress = it },
             )
         }
         if (notifyOpen && selected != null) {
-            NotifySheet(friend = selected, onDismissed = { notifyOpen = false }, onProgress = { notifyProgress = it })
+            NotifySheet(friend = selected, stack = stack, onDismissed = { notifyOpen = false }, onProgress = { notifyProgress = it })
         }
         if (stopSharing && selected != null) {
             StopSharingSheet(friend = selected, onDismissed = { stopSharing = false }, onProgress = { stopProgress = it })
         }
+        }
+    }
+}
+
+// Each incoming sheet covers 75% of the scaled sheet beneath it. Multiplying by the
+// recession factor keeps that ratio true when a third sheet pushes BOTH earlier sheets back.
+private const val StackScale = 0.96f
+private const val StackHeightRatio = 0.75f * StackScale
+private const val StackBaseHeight = 0.9f
+
+private fun Modifier.recedeInStack(): Modifier = sheetStackEffect { entry ->
+    scaleX = StackScale.pow(entry.animatedDepth)
+    scaleY = scaleX
+    cornerRadius = SheetCorner
+}
+
+@Composable
+private fun NearbyPeopleSheet(onDismissed: () -> Unit, onSelect: (Friend) -> Unit) {
+    val colors = findColors()
+    val state = rememberSheetState("medium")
+    val scope = rememberCoroutineScope()
+    val list = rememberLazyListState()
+    var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
+    val points = remember {
+        listOf(SheetSnapPoint.fraction("peek", 0.4f), SheetSnapPoint.fraction("medium", 0.56f), SheetSnapPoint.expanded())
+    }
+    BetterModalSheet(
+        state = state,
+        snapPoints = points,
+        onDismissed = {
+            selectedId?.let { id -> friends.find { it.id == id }?.let(onSelect) }
+            onDismissed()
+        },
+        title = "Nearby people",
+        bodyMode = SheetBodyMode.Fill,
+        containerColor = colors.sheet,
+        contentColor = colors.ink,
+        scrimColor = Color.Black.copy(alpha = 0.22f),
+        shape = RoundedCornerShape(topStart = SheetCorner, topEnd = SheetCorner),
+        surfaceModifier = Modifier.testTag("nearby-surface"),
+        dragHandle = { Handle() },
+        header = {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Nearby people", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = colors.ink)
+                        Text("Find your friends around town", fontSize = 14.sp, color = colors.mist)
+                    }
+                    CloseButton(Modifier.testTag("close-nearby")) { scope.launch { state.hide() } }
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("peek" to "Peek", "medium" to "Half", "expanded" to "Full").forEach { (id, label) ->
+                        val selected = state.targetSnapPoint == id
+                        Button(
+                            onClick = { scope.launch { state.snapTo(id) } },
+                            modifier = Modifier.weight(1f).testTag("nearby-snap-$id"),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (selected) colors.link else colors.fillStrong,
+                                contentColor = if (selected) Color.White else colors.ink,
+                            ),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                        ) { Text(label, fontSize = 14.sp) }
+                    }
+                }
+            }
+        },
+        footer = {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Text("${friends.size} friends", Modifier.weight(1f), color = colors.mist, fontSize = 14.sp)
+                Button(onClick = { scope.launch { state.hide() } }) { Text("Done") }
+            }
+        },
+    ) {
+        LazyColumn(state = list, modifier = Modifier.fillMaxSize().testTag("nearby-list"), contentPadding = PaddingValues(bottom = 8.dp)) {
+            items(friends, key = { it.id }) { friend ->
+                PersonRow(friend) { selectedId = friend.id; scope.launch { state.hide() } }
+            }
         }
     }
 }
@@ -529,6 +622,7 @@ private fun Modifier.revealHeight(fraction: Float): Modifier = this.clipToBounds
 private fun PersonSheet(
     friend: Friend,
     state: SheetState,
+    stack: SheetStackState,
     front: Boolean,
     places: Boolean,
     onTogglePlaces: () -> Unit,
@@ -540,16 +634,12 @@ private fun PersonSheet(
     val colors = findColors()
     val scope = rememberCoroutineScope()
     LaunchedEffect(friend.id) { state.show("content") }
-    LaunchedEffect(state) {
-        var seen = false
-        snapshotFlow { Triple(state.isVisible, state.currentSnapPoint, state.isAnimationRunning) }.collect { (visible, detent, running) ->
-            if (visible) seen = true
-            else if (seen && detent == null && !running) onClosed()
-        }
-    }
-    BetterSheetHost(
+    BetterModalSheet(
         state = state,
-        snapPoints = listOf(SheetSnapPoint.fitContent(), SheetSnapPoint.expanded()),
+        stackState = stack,
+        onDismissed = onClosed,
+        snapPoints = listOf(SheetSnapPoint.fitContent(), SheetSnapPoint.fraction("stack", StackBaseHeight), SheetSnapPoint.expanded()),
+        surfaceModifier = Modifier.recedeInStack().testTag("stack-profile-surface"),
         modifier = modifier,
         behavior = SheetBehavior(
             keyboardBehavior = SheetKeyboardBehavior.Ignore,
@@ -712,7 +802,7 @@ private fun chatHistory(): List<ChatLine> {
 }
 
 @Composable
-private fun ContactSheet(friend: Friend, onNotify: () -> Unit, onDismissed: () -> Unit, onProgress: (Float) -> Unit = {}) {
+private fun ContactSheet(friend: Friend, stack: SheetStackState, onNotify: () -> Unit, onDismissed: () -> Unit, onProgress: (Float) -> Unit = {}) {
     val colors = findColors()
     val scope = rememberCoroutineScope()
     val state = rememberSheetState(initialSnapPoint = "medium")
@@ -720,7 +810,9 @@ private fun ContactSheet(friend: Friend, onNotify: () -> Unit, onDismissed: () -
     SideEffect { onProgress(state.progress) }
     BetterModalSheet(
         state = state,
-        snapPoints = listOf(SheetSnapPoint.fraction("medium", 0.72f), SheetSnapPoint.expanded()),
+        stackState = stack,
+        surfaceModifier = Modifier.recedeInStack().testTag("stack-contact-surface"),
+        snapPoints = listOf(SheetSnapPoint.fraction("medium", StackBaseHeight * StackHeightRatio), SheetSnapPoint.expanded()),
         onDismissed = onDismissed,
         behavior = SheetBehavior(keyboardBehavior = SheetKeyboardBehavior.Resize),
         bodyMode = SheetBodyMode.Scroll,
@@ -769,14 +861,16 @@ private fun ContactSheet(friend: Friend, onNotify: () -> Unit, onDismissed: () -
 }
 
 @Composable
-private fun NotifySheet(friend: Friend, onDismissed: () -> Unit, onProgress: (Float) -> Unit = {}) {
+private fun NotifySheet(friend: Friend, stack: SheetStackState, onDismissed: () -> Unit, onProgress: (Float) -> Unit = {}) {
     val colors = findColors()
     val scope = rememberCoroutineScope()
-    val state = rememberSheetState(initialSnapPoint = "content")
+    val state = rememberSheetState(initialSnapPoint = "notification")
     SideEffect { onProgress(state.progress) }
     BetterModalSheet(
         state = state,
-        snapPoints = listOf(SheetSnapPoint.fitContent()),
+        stackState = stack,
+        surfaceModifier = Modifier.recedeInStack().testTag("stack-notify-surface"),
+        snapPoints = listOf(SheetSnapPoint.fraction("notification", StackBaseHeight * StackHeightRatio * StackHeightRatio)),
         onDismissed = onDismissed,
         title = "Notify Me",
         containerColor = colors.sheet,
@@ -801,11 +895,19 @@ private fun NotifySheet(friend: Friend, onDismissed: () -> Unit, onProgress: (Fl
             }
         },
     ) {
-        Text(
-            "You'll get a notification when ${friend.name.substringBefore(' ')} arrives at Brightskies or leaves. This stays on until you turn it off.",
-            Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
-            color = colors.ink.copy(alpha = 0.9f),
-        )
+        Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text("Know when ${friend.name.substringBefore(' ')} arrives or leaves. Notifications stay on until you turn them off.",
+                color = colors.ink.copy(alpha = 0.9f), fontSize = 16.sp, lineHeight = 23.sp)
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(colors.fill).padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Navigation, contentDescription = null, tint = colors.link, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(14.dp))
+                Column {
+                    Text("Brightskies", color = colors.ink, fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
+                    Text("Arrives or leaves", color = colors.mist, fontSize = 14.sp)
+                }
+            }
+        }
     }
 }
 

@@ -76,6 +76,17 @@ class DemoRecordingTest {
     }
 
     @Test fun snapPoints() {
+        pause(500)
+        go("collapsed")
+        compose.onNodeWithContentDescription("Nearby people").performClick(); pause(1100)
+        for (point in listOf("peek", "expanded", "medium")) {
+            compose.onNodeWithTag("nearby-snap-$point").performClick(); pause(1100)
+        }
+        compose.onNodeWithTag("nearby-list").performTouchInput { swipeUp() }; pause(800)
+        compose.onNodeWithTag("close-nearby").performClick(); pause(1100)
+    }
+
+    @Test fun tray() {
         pause()
         go("peek"); go("expanded"); go("medium"); go("collapsed")
         compose.onNodeWithTag("tab-people").performClick(); pause(1200)
@@ -89,23 +100,6 @@ class DemoRecordingTest {
         compose.onNodeWithTag("tab-chat").performClick(); pause(1200)
         go("collapsed", "chat")
         compose.onNodeWithTag("tab-people").performClick(); pause(1200)
-    }
-
-    @Test fun tray() {
-        pause()
-        go("collapsed")
-        val header = compose.onNodeWithTag("sheet-header")
-        header.performTouchInput { down(center) }
-        repeat(34) {
-            header.performTouchInput { moveBy(androidx.compose.ui.geometry.Offset(0f, -12f), delayMillis = FRAME_MILLIS) }
-            pause(FRAME_MILLIS)
-        }
-        repeat(18) {
-            header.performTouchInput { moveBy(androidx.compose.ui.geometry.Offset(0f, 12f), delayMillis = FRAME_MILLIS) }
-            pause(FRAME_MILLIS)
-        }
-        header.performTouchInput { up() }; pause()
-        go("expanded"); go("collapsed")
     }
 
     @Test fun chat() {
@@ -126,10 +120,11 @@ class DemoRecordingTest {
     }
 
     @Test fun stacked() {
-        pause()
-        compose.onNodeWithTag("person-kim").performClick(); pause(1400)
+        pause(700)
+        compose.onNodeWithTag("person-kim").performClick(); pause(1100)
+        go("stack", "person")
         compose.onNodeWithTag("stack-open-details").performClick(); pause(1400)
-        compose.onNodeWithTag("stack-open-confirm").performClick(); pause(1400)
+        compose.onNodeWithTag("stack-open-confirm").performClick(); pause(2000)
         compose.onNodeWithTag("stack-send-review").performClick(); pause(1200)
         compose.onNodeWithTag("stack-close-details").performClick(); pause(1200)
         compose.onNodeWithTag("stack-close-base").performClick(); pause(1200)

@@ -10,9 +10,9 @@ Named snap points, smooth scroll handoff, sticky headers and footers, and standa
     <th>Stacked sheets</th>
   </tr>
   <tr>
-    <td><a href="docs/videos/snapPoints.mp4"><img src="docs/videos/snapPoints.gif" width="240" alt="The Find My people sheet snapping between expanded content and its tab bar"></a></td>
-    <td><a href="docs/videos/tray.mp4"><img src="docs/videos/tray.gif" width="240" alt="An inset tray expanding into an edge-to-edge sheet"></a></td>
-    <td><a href="docs/videos/stacked.mp4"><img src="docs/videos/stacked.gif" width="240" alt="Find My person details, contact info, and notification sheets layered over the map"></a></td>
+    <td><a href="docs/videos/snapPoints.mp4"><img src="docs/videos/snapPoints.gif" width="240" alt="A standalone Nearby people sheet with three snap points"></a></td>
+    <td><a href="docs/videos/tray.mp4"><img src="docs/videos/tray.gif" width="240" alt="The People tray snapping between heights and its persistent tab bar"></a></td>
+    <td><a href="docs/videos/stacked.mp4"><img src="docs/videos/stacked.gif" width="240" alt="Three progressively smaller Find My sheets scaling back to reveal the layer behind"></a></td>
   </tr>
 </table>
 

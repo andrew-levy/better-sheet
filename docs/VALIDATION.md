@@ -22,16 +22,16 @@ the focused window.
 The recording pipeline now targets the real Find My app in light mode. Each scenario
 waits for MapLibre to render its tiles before capturing:
 
-- `snapPoints`: people list at peek, expanded, medium, and the permanent collapsed tab bar
+- `snapPoints`: a standalone Nearby people sheet at peek, full, and half height
 - `tabs`: animated People/Chat changes, including reopening from the tab bar
-- `tray`: frame-by-frame drag reversal, tray morphing, and progress-driven fade/blur
+- `tray`: the People tray at peek, full, half height, and the collapsed tab bar, with progress-driven fade/blur
 - `chat`: keyboard expansion, composing, sending, keyboard dismissal, and collapse
 - `contentFit`: person details resizing as nearby places are added and removed
-- `stacked`: person details, contact information, and notification sheets
+- `stacked`: person details, contact information, and notifications progressively scaling back; each layer reveals the top quarter of the sheet beneath
 - `scrollHandoff`: list scrolling followed by a captured handle drag and collapse
 
 `FindMyNavigationTest` checks the persistent minimum height, tab selection, retained drafts,
-unchanged footer position, and Back collapsing rather than hiding on API 24 and 35.
+unchanged footer position, Back collapsing rather than hiding, the standalone snap points, and stacked scale/quarter-height reveals on API 24 and 35.
 The sample gallery remains the focused library regression suite.
 
 The software-rendered CI emulator misses motion with `screenrecord`, so clips capture

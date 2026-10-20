@@ -59,4 +59,43 @@ class FindMyNavigationTest {
         }
         compose.onNodeWithTag("tab-chat").assertIsDisplayed()
     }
+
+    @Test fun nearbyPeopleUsesAnEdgeAttachedSheetWithThreeSnapPoints() {
+        compose.onNodeWithContentDescription("Nearby people").performClick()
+        for (point in listOf("peek", "expanded", "medium")) {
+            compose.onNodeWithTag("nearby-snap-$point").performClick()
+            compose.onNode(hasStateDescription(point) and hasAnyAncestor(hasTestTag("nearby-surface"))).assertExists()
+            val bounds = compose.onNodeWithTag("nearby-surface").getUnclippedBoundsInRoot()
+            check(kotlin.math.abs(bounds.left.value) < 1f) { "The standalone sheet has a floating side gap: $bounds" }
+        }
+        compose.onNodeWithTag("close-nearby").performClick()
+        compose.onNodeWithTag("main-tabs").assertIsDisplayed()
+    }
+
+    @Test fun threeSheetsProgressivelyRecedeAndRevealAQuarterOfThePreviousSheet() {
+        compose.onNodeWithTag("person-kim").performClick()
+        go("stack", "person")
+        val baseSolo = compose.onNodeWithTag("stack-profile-surface").getUnclippedBoundsInRoot()
+        compose.onNodeWithTag("stack-open-details").performClick()
+        val baseBehindSecond = compose.onNodeWithTag("stack-profile-surface").getUnclippedBoundsInRoot()
+        val secondSolo = compose.onNodeWithTag("stack-contact-surface").getUnclippedBoundsInRoot()
+        check(baseBehindSecond.width < baseSolo.width) { "The profile did not recede under contact info" }
+        fun assertQuarter(back: androidx.compose.ui.unit.DpRect, front: androidx.compose.ui.unit.DpRect) {
+            val visibleFraction = (front.top - back.top).value / back.height.value
+            check(visibleFraction in 0.20f..0.30f) { "Expected a quarter of the previous sheet to remain visible: $visibleFraction" }
+        }
+        assertQuarter(baseBehindSecond, secondSolo)
+        compose.onNodeWithTag("stack-open-confirm").performClick()
+        val baseBehindThird = compose.onNodeWithTag("stack-profile-surface").getUnclippedBoundsInRoot()
+        val secondBehindThird = compose.onNodeWithTag("stack-contact-surface").getUnclippedBoundsInRoot()
+        val third = compose.onNodeWithTag("stack-notify-surface").getUnclippedBoundsInRoot()
+        check(baseBehindThird.width < baseBehindSecond.width) { "The back sheet stopped receding at depth two" }
+        check(secondBehindThird.width < secondSolo.width) { "The middle sheet did not recede" }
+        assertQuarter(baseBehindThird, secondBehindThird)
+        assertQuarter(secondBehindThird, third)
+        compose.onNodeWithTag("stack-send-review").performClick()
+        val restored = compose.onNodeWithTag("stack-contact-surface").getUnclippedBoundsInRoot()
+        check(kotlin.math.abs(restored.width.value - secondSolo.width.value) < 2f) { "The contact sheet did not restore its scale" }
+    }
+
 }
