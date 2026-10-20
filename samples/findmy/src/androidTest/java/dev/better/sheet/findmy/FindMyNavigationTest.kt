@@ -75,6 +75,7 @@ class FindMyNavigationTest {
     }
 
     @Test fun threeSheetsProgressivelyRecedeAndRevealAQuarterOfThePreviousSheet() {
+        go("medium")
         compose.onNodeWithTag("person-kim").performClick()
         go("stack", "person")
         val baseSolo = compose.onNodeWithTag("stack-profile-surface").getUnclippedBoundsInRoot()
