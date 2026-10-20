@@ -6,6 +6,21 @@ public API.
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-10-19
+
+### Fixed
+
+- Keep tray shadow blur, opacity, and offset consistent while dragging and changing height,
+  avoiding the offset gray layer beneath floating trays.
+
+### Changed
+
+- Use Compose 1.9 (BOM 2025.08.00) for fixed drop shadows; Android minimum remains API 24.
+- Use Find My for README demos, with a persistent People/Chat bar, smooth progress-driven
+  content transitions, standalone snap points, and progressively scaled stacked sheets.
+- Keep Find My titles pinned and dismiss its keyboard before collapsing.
+- Add independent JitPack publication verification and document progress-driven content effects.
+
 ## [0.6.0] - 2026-10-19
 
 ### Breaking API changes
@@ -159,3 +174,5 @@ Initial public release.
 
 
 [0.6.0]: https://github.com/andrew-levy/better-sheet/releases/tag/0.6.0
+
+[0.6.1]: https://github.com/andrew-levy/better-sheet/releases/tag/0.6.1

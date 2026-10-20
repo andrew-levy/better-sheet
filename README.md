@@ -27,7 +27,7 @@ Click a preview for the full-resolution MP4. Recorded in the Find My app, in lig
 maven("https://jitpack.io")
 
 // app/build.gradle.kts
-implementation("com.github.andrew-levy:better-sheet:0.6.0")
+implementation("com.github.andrew-levy:better-sheet:0.6.1")
 ```
 
 See [migration notes](docs/USAGE.md#animation-behavior-and-migration) when upgrading from 0.5.0.
