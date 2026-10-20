@@ -1,7 +1,5 @@
 package dev.better.sheet.findmy
 
-import androidx.compose.ui.unit.width
-import androidx.compose.ui.unit.height
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
@@ -78,27 +76,28 @@ class FindMyNavigationTest {
         go("medium")
         compose.onNodeWithTag("person-kim").performClick()
         go("stack", "person")
-        val baseSolo = compose.onNodeWithTag("stack-profile-surface").getUnclippedBoundsInRoot()
+        // Layout size is unchanged by graphicsLayer; semantic bounds include its scale.
+        val baseSolo = compose.onNodeWithTag("stack-profile-surface").fetchSemanticsNode().boundsInRoot
         compose.onNodeWithTag("stack-open-details").performClick()
-        val baseBehindSecond = compose.onNodeWithTag("stack-profile-surface").getUnclippedBoundsInRoot()
-        val secondSolo = compose.onNodeWithTag("stack-contact-surface").getUnclippedBoundsInRoot()
+        val baseBehindSecond = compose.onNodeWithTag("stack-profile-surface").fetchSemanticsNode().boundsInRoot
+        val secondSolo = compose.onNodeWithTag("stack-contact-surface").fetchSemanticsNode().boundsInRoot
         check(baseBehindSecond.width < baseSolo.width) { "The profile did not recede under contact info" }
-        fun assertQuarter(back: androidx.compose.ui.unit.DpRect, front: androidx.compose.ui.unit.DpRect) {
-            val visibleFraction = (front.top - back.top).value / back.height.value
+        fun assertQuarter(back: androidx.compose.ui.geometry.Rect, front: androidx.compose.ui.geometry.Rect) {
+            val visibleFraction = (front.top - back.top) / back.height
             check(visibleFraction in 0.20f..0.30f) { "Expected a quarter of the previous sheet to remain visible: $visibleFraction" }
         }
         assertQuarter(baseBehindSecond, secondSolo)
         compose.onNodeWithTag("stack-open-confirm").performClick()
-        val baseBehindThird = compose.onNodeWithTag("stack-profile-surface").getUnclippedBoundsInRoot()
-        val secondBehindThird = compose.onNodeWithTag("stack-contact-surface").getUnclippedBoundsInRoot()
-        val third = compose.onNodeWithTag("stack-notify-surface").getUnclippedBoundsInRoot()
+        val baseBehindThird = compose.onNodeWithTag("stack-profile-surface").fetchSemanticsNode().boundsInRoot
+        val secondBehindThird = compose.onNodeWithTag("stack-contact-surface").fetchSemanticsNode().boundsInRoot
+        val third = compose.onNodeWithTag("stack-notify-surface").fetchSemanticsNode().boundsInRoot
         check(baseBehindThird.width < baseBehindSecond.width) { "The back sheet stopped receding at depth two" }
         check(secondBehindThird.width < secondSolo.width) { "The middle sheet did not recede" }
         assertQuarter(baseBehindThird, secondBehindThird)
         assertQuarter(secondBehindThird, third)
         compose.onNodeWithTag("stack-send-review").performClick()
-        val restored = compose.onNodeWithTag("stack-contact-surface").getUnclippedBoundsInRoot()
-        check(kotlin.math.abs(restored.width.value - secondSolo.width.value) < 2f) { "The contact sheet did not restore its scale" }
+        val restored = compose.onNodeWithTag("stack-contact-surface").fetchSemanticsNode().boundsInRoot
+        check(kotlin.math.abs(restored.width - secondSolo.width) < 2f) { "The contact sheet did not restore its scale" }
     }
 
 }
