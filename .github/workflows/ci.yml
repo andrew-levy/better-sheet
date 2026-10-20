@@ -111,6 +111,7 @@ jobs:
           target: default
           profile: pixel_4
           disk-size: 2048M
+          ram-size: 3072M
           disable-animations: false
           script: |
             adb shell settings put global hide_error_dialogs 1

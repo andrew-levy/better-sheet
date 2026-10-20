@@ -8,6 +8,7 @@ at the same frame duration, so recorded motion has its real timing even on a slo
 import argparse
 from pathlib import Path
 import subprocess
+import shutil
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -52,6 +53,7 @@ def record(scenario, work):
     frames = work / scenario
     count = len(list(frames.glob('*.jpg')))
     encode(frames, out / f'{scenario}.mp4', out / f'{scenario}.gif')
+    shutil.rmtree(frames)
     print(f'Recorded {scenario} ({count} frames, {count * FRAME_MILLIS / 1000:.1f}s)', flush=True)
 
 if __name__ == '__main__':
@@ -63,6 +65,8 @@ if __name__ == '__main__':
         parser.error('Scenarios: ' + ', '.join(SCENARIOS))
     if not args.skip_build:
         run(str(ROOT / 'gradlew'), ':findmy:assembleDebug', ':findmy:assembleDebugAndroidTest', cwd=ROOT)
+        # MapLibre and the emulator need the RAM after compilation; do not retain the build JVM.
+        run(str(ROOT / 'gradlew'), '--stop', cwd=ROOT)
     run('adb', 'wait-for-device')
     run('adb', 'install', '-r', str(ROOT / 'samples/findmy/build/outputs/apk/debug/findmy-debug.apk'))
     run('adb', 'install', '-r', str(ROOT / 'samples/findmy/build/outputs/apk/androidTest/debug/findmy-debug-androidTest.apk'))

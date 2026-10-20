@@ -2,6 +2,7 @@ package dev.better.sheet.sample
 
 import android.graphics.Bitmap
 import android.os.SystemClock
+import android.view.MotionEvent
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -41,7 +42,7 @@ class TrayRenderingTest {
                 SideEffect { initialized.set(true) }
                 Box(Modifier.fillMaxSize().background(Color.Green))
                 BetterModalSheet(state,
-                    listOf(SheetSnapPoint.fraction("medium", .6f), SheetSnapPoint.expanded()),
+                    listOf(SheetSnapPoint.fraction("medium", .5f), SheetSnapPoint.expanded()),
                     presentation = presentation,
                     containerColor = Color.Cyan,
                     surfaceModifier = Modifier.onGloballyPositioned {
@@ -132,5 +133,83 @@ class TrayRenderingTest {
             }
         }
     }
+
+    @Test fun heldDragAndReversalDoNotPaintAShelfBelowTheMorphingTray() {
+        lateinit var state: SheetState
+        var headerTop = 0f
+        var surfaceBottom = 0f
+        var surfaceCenter = 0f
+        ActivityScenario.launch(MainActivity::class.java).use { activity ->
+            activity.onActivity { it.setContent {
+                state = rememberSheetState("medium")
+                Box(Modifier.fillMaxSize().background(Color.Green))
+                BetterModalSheet(
+                    state = state,
+                    snapPoints = listOf(SheetSnapPoint.fraction("medium", .5f), SheetSnapPoint.expanded()),
+                    presentation = SheetPresentation.Tray(),
+                    behavior = SheetBehavior(scrimEnabled = false),
+                    bodyMode = SheetBodyMode.Fill,
+                    containerColor = Color.Cyan,
+                    surfaceModifier = Modifier.onGloballyPositioned {
+                        val bounds = it.boundsInWindow()
+                        surfaceBottom = bounds.bottom
+                        surfaceCenter = bounds.center.x
+                    },
+                    dragHandle = null,
+                    header = {
+                        Box(Modifier.fillMaxWidth().height(48.dp).background(Color.Magenta).onGloballyPositioned {
+                            headerTop = it.boundsInWindow().top
+                        })
+                    },
+                    footer = { Box(Modifier.fillMaxWidth().height(64.dp)) },
+                ) { Spacer(Modifier.fillMaxSize()) }
+            } }
+            val deadline = SystemClock.uptimeMillis() + 15000
+            while (true) {
+                var ready = false
+                instrumentation.runOnMainSync {
+                    ready = headerTop > 0f && state.isVisible && !state.isAnimationRunning && headerTop > 0f
+                }
+                if (ready) break
+                check(SystemClock.uptimeMillis() < deadline) { "Tray did not open" }
+                SystemClock.sleep(30)
+            }
+            val initial = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
+            val distance = initial.height * .15f
+            initial.recycle()
+            val downTime = SystemClock.uptimeMillis()
+            var y = headerTop + 30f
+            fun pointer(action: Int) {
+                val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action, surfaceCenter, y, 0)
+                try { instrumentation.sendPointerSync(event) } finally { event.recycle() }
+            }
+            pointer(MotionEvent.ACTION_DOWN)
+            try {
+                for (direction in listOf(-1f, -1f, 1f)) {
+                    repeat(12) {
+                        y += direction * distance / 12f
+                        pointer(MotionEvent.ACTION_MOVE)
+                        SystemClock.sleep(24)
+                    }
+                    // Keep the finger down: settled-only screenshots missed this regression.
+                    SystemClock.sleep(120)
+                    var progress = 0f
+                    instrumentation.runOnMainSync { progress = state.progress }
+                    assertTrue("Expected an intermediate morph while dragging, got $progress", progress > .6f && progress < .98f)
+                    val shot = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
+                    try {
+                        val row = (surfaceBottom.toInt() + 2).coerceAtMost(shot.height - 2)
+                        val outside = shot.getPixel(2, row)
+                        val beneath = shot.getPixel(shot.width / 3, row)
+                        for (channel in listOf<(Int) -> Int>(android.graphics.Color::red, android.graphics.Color::green, android.graphics.Color::blue)) {
+                            assertEquals("An offset shadow shelf appeared under the held tray at $progress",
+                                channel(outside).toFloat(), channel(beneath).toFloat(), 3f)
+                        }
+                    } finally { shot.recycle() }
+                }
+            } finally { pointer(MotionEvent.ACTION_UP) }
+        }
+    }
+
 }
 
