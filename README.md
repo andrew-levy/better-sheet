@@ -180,3 +180,9 @@ Open in Android Studio with JDK 17 and SDK 35, then run either app on Android 24
 ```
 
 [Contributing & recording demos](CONTRIBUTING.md) · [Architecture](docs/ARCHITECTURE.md) · [Apache 2.0 license](LICENSE)
+
+### Fragment Navigation comparison
+
+The sample gallery includes **Fragment navigation comparison**: normal Fragment screens with the same
+VM-backed editor hosted by either a legacy DialogFragment or a dialog-less Fragment with BetterModalSheet.
+Both use `NavController.navigateSafe(...)`. See the [integration walkthrough](docs/FRAGMENT_NAVIGATION.md).
