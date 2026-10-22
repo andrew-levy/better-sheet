@@ -124,6 +124,11 @@ private fun Gallery(autoOpen: Demo?) {
                 Button(onClick = { context.startActivity(Intent(context, FragmentDemoActivity::class.java)) }) {
                     Text("Fragment root example")
                 }
+                Button(onClick = {
+                    context.startActivity(Intent(context, dev.better.sheet.sample.navigation.NavigationComparisonActivity::class.java))
+                }, modifier = Modifier.testTag("open-navigation-comparison")) {
+                    Text("Fragment navigation comparison")
+                }
             }
             item { Text("0.1.0 • Android 24+ • Foundation powered", color = Color(0xFF68728A), style = MaterialTheme.typography.labelSmall) }
         }
