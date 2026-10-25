@@ -59,10 +59,10 @@ class NavigationComparisonTest {
             compose.onNodeWithTag("save-sheet").performClick()
             awaitDestination(R.id.comparisonCustomer)
             compose.onNodeWithTag("result").assertTextContains(if (modern) "Modal note" else "Legacy note", substring = true)
-            compose.onNodeWithTag("background-counter").assertTextContains("Screen counter: 1")
+            compose.onNodeWithTag("background-counter").assertTextContains("Log a call · 1")
         }
         compose.onNodeWithTag("background-counter").performClick()
-        compose.onNodeWithTag("background-counter").assertTextContains("Screen counter: 2")
+        compose.onNodeWithTag("background-counter").assertTextContains("Log a call · 2")
     }
 
     @Test fun eachApproachCreatesOnlyOneDialogWindow() {

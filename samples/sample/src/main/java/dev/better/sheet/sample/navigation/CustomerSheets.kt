@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.os.bundleOf
 import androidx.core.view.WindowCompat
@@ -52,8 +53,7 @@ class LegacyCustomerSheetFragment : ComposeContentFragment() {
             title = "Legacy customer sheet",
             onDismissed = { dismiss() },
         ) {
-            EditorContent("Old · DialogFragment", "The Fragment owns the dialog; BetterSheet draws inside it.",
-                viewModel, onSave = { saveResult(viewModel) },
+            EditorContent("Opened in a dialog", viewModel, onSave = { saveResult(viewModel) },
                 onPop = { findNavController().popBackStack() },
                 onFullScreen = { findNavController().navigateSafe(R.id.openReceipt) })
         }
@@ -68,16 +68,15 @@ class ModalCustomerSheetFragment : ModalSheetFragment() {
         val state = rememberSheetState(initialSnapPoint = "medium")
         ModalContent(state, customerSnapPoints, closeRequested, title = "Modal customer sheet") {
             val depth = requireArguments().getInt("depth", 1)
-            EditorContent("New · Modal sheet destination", "The Fragment has no dialog. BetterModalSheet owns the only window.",
-                viewModel, onSave = { saveResult(viewModel) },
+            EditorContent("From this account", viewModel, onSave = { saveResult(viewModel) },
                 onPop = { findNavController().popBackStack() },
-                onFullScreen = { findNavController().navigateSafe(R.id.openReceipt) })
-            if (depth < 2) {
-                TextButton(onClick = {
-                    findNavController().navigateSafe(R.id.openModalSheet,
-                        bundleOf("customer" to "Second sheet", "depth" to depth + 1))
-                }, modifier = Modifier.padding(horizontal = 24.dp).testTag("stack-sheet")) { Text("Open a second sheet") }
-            }
+                onFullScreen = { findNavController().navigateSafe(R.id.openReceipt) },
+                followUp = if (depth < 2) {
+                    {
+                        findNavController().navigateSafe(R.id.openModalSheet,
+                            bundleOf("customer" to "Second sheet", "depth" to depth + 1))
+                    }
+                } else null)
         }
     }
 }
@@ -92,23 +91,26 @@ private val customerSnapPoints = listOf(SheetSnapPoint.fraction("medium", .8f), 
 
 @Composable
 private fun ColumnScope.EditorContent(
-    title: String,
-    explanation: String,
+    host: String,
     viewModel: CustomerSheetViewModel,
     onSave: () -> Unit,
     onPop: () -> Unit,
     onFullScreen: () -> Unit,
+    followUp: (() -> Unit)? = null,
 ) {
     val note by viewModel.note.collectAsState()
     Column(Modifier.fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.testTag("sheet-title"))
-        Text(explanation)
-        Text(viewModel.customer, style = MaterialTheme.typography.titleMedium, modifier = Modifier.testTag("sheet-customer"))
-        OutlinedTextField(note, viewModel::edit, label = { Text("Customer note") },
-            modifier = Modifier.fillMaxWidth().testTag("sheet-note"))
-        Button(onClick = onSave, modifier = Modifier.fillMaxWidth().testTag("save-sheet")) { Text("Save & close") }
-        OutlinedButton(onClick = viewModel::close, modifier = Modifier.fillMaxWidth().testTag("vm-close")) { Text("Close from ViewModel") }
-        TextButton(onClick = onPop, modifier = Modifier.testTag("pop-sheet")) { Text("Pop through NavController") }
-        TextButton(onClick = onFullScreen, modifier = Modifier.testTag("sheet-full-screen")) { Text("Navigate to a full screen") }
+        Text("Note", color = Ink, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.testTag("sheet-title"))
+        Text(viewModel.customer, color = Accent, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.testTag("sheet-customer"))
+        Text(host, color = Muted, style = MaterialTheme.typography.labelMedium)
+        OutlinedTextField(note, viewModel::edit, label = { Text("What should we remember?") },
+            modifier = Modifier.fillMaxWidth().testTag("sheet-note"), minLines = 3)
+        Button(onClick = onSave, modifier = Modifier.fillMaxWidth().testTag("save-sheet")) { Text("Save note") }
+        OutlinedButton(onClick = viewModel::close, modifier = Modifier.fillMaxWidth().testTag("vm-close")) { Text("Discard") }
+        TextButton(onClick = onPop, modifier = Modifier.testTag("pop-sheet")) { Text("Back") }
+        TextButton(onClick = onFullScreen, modifier = Modifier.testTag("sheet-full-screen")) { Text("View receipt") }
+        if (followUp != null) {
+            TextButton(onClick = followUp, modifier = Modifier.testTag("stack-sheet")) { Text("Add a follow-up") }
+        }
     }
 }

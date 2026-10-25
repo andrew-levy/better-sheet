@@ -24,31 +24,15 @@ internal fun AnimationGallery(close: () -> Unit) {
     val state = rememberSheetState("medium", initiallyVisible = false)
     val scope = rememberCoroutineScope()
     val points = remember { listOf(SheetSnapPoint.fraction("medium", .5f), SheetSnapPoint.expanded()) }
-    Column(Modifier.fillMaxSize().background(Color(0xFFF3F5FA)).safeDrawingPadding().padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("Make it move your way.", style = MaterialTheme.typography.headlineMedium)
-        Text("One sheet. Standard Compose transitions. A separate spec for snapping.")
+    Column(Modifier.fillMaxSize().background(Color(0xFFF3F0E8)).safeDrawingPadding().padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("MOTION", color = Color(0xFF0E6B4F), style = MaterialTheme.typography.labelLarge)
+        Text("How a sheet arrives.", style = MaterialTheme.typography.headlineMedium, color = Color(0xFF1C1917))
+        Text("Same place card. Three ways it can enter, leave, and change height.", color = Color(0xFF6F6A62))
         for ((id, title, detail) in listOf(
-            Triple(
-                "Spring",
-                "Spring",
-                "Enter/exit: vertical slide with a stiff spring (slight overshoot). " +
-                    "Snap (Expand / Half height): low-damping spring — watch for a quick bounce past the detent, then settle. " +
-                    "No opacity change on show/hide.",
-            ),
-            Triple(
-                "Fade",
-                "Fade",
-                "Enter/exit: opacity only (~900 ms in, ~750 ms out) — the sheet should not slide; it fades in place. " +
-                    "Scrim and sheet blue wash in together. Snap uses a slow tween (~1.4 s) so height changes are easy to see.",
-            ),
-            Triple(
-                "SlideFade",
-                "Slide + fade",
-                "Enter/exit: slide and fade together (~750 ms in, ~550 ms out). " +
-                    "Snap: high-stiffness spring — should reach the detent fast with little float. " +
-                    "Compare to Spring: more motion on open/close, snappier detent changes.",
-            ),
+            Triple("Spring", "Spring", "Slides in and settles with a little bounce."),
+            Triple("Fade", "Fade", "Appears in place. Height changes are slow and even."),
+            Triple("SlideFade", "Slide + fade", "Slides and fades together, then snaps quickly."),
         )) {
             OutlinedButton(onClick = { preset = id; scope.launch { state.show("medium") } },
                 modifier = Modifier.fillMaxWidth().testTag("animation-open-$id")) {
@@ -58,7 +42,7 @@ internal fun AnimationGallery(close: () -> Unit) {
                 }
             }
         }
-        TextButton(onClick = close) { Text("Back to demos") }
+        TextButton(onClick = close) { Text("Back") }
     }
     val enter = when (preset) {
         "Fade" -> fadeIn(tween(900))
@@ -81,20 +65,17 @@ internal fun AnimationGallery(close: () -> Unit) {
             Column(Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) {
                 Text(
                     when (preset) {
-                        "Fade" -> "Fade + slow tween snap"
-                        "SlideFade" -> "Slide + fade · snappy snap"
-                        else -> "Bouncy spring slide + snap"
+                        "Fade" -> "Fade"
+                        "SlideFade" -> "Slide and fade"
+                        else -> "Spring"
                     },
                     style = MaterialTheme.typography.headlineSmall,
                 )
                 Text(
                     when (preset) {
-                        "Fade" ->
-                            "Open/Close: fade only. Expand/Half height: ~1.4 s height tween — no bounce."
-                        "SlideFade" ->
-                            "Open/Close: slide + fade. Expand/Half height: stiff spring — fast settle."
-                        else ->
-                            "Open/Close: spring slide. Expand/Half height: undershoot/overshoot bounce."
+                        "Fade" -> "Fades in place. Expand and half height move slowly."
+                        "SlideFade" -> "Slides and fades. Height changes settle fast."
+                        else -> "Springs in from the bottom, then bounces into place."
                     },
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -113,15 +94,13 @@ internal fun AnimationGallery(close: () -> Unit) {
             }
         }) {
         Column(Modifier.fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(
-                "1) Note how the sheet appears and disappears. " +
-                    "2) Tap Expand, then Half height — watch snap timing. " +
-                    "3) Close and reopen another preset to compare.",
-            )
-            repeat(3) { index ->
-                Surface(color = Color(0xFFF3F5FA), shape = MaterialTheme.shapes.medium) {
-                    Text(listOf("Sticky actions stay at the bottom", "Dragging still follows your finger", "The same API works in fragments")[index],
-                        Modifier.fillMaxWidth().padding(16.dp))
+            Text("Blue Bottle · Hayes Valley", style = MaterialTheme.typography.titleMedium)
+            listOf("Open until 7" to "315 Linden Street", "Window seat" to "Quiet after 5").forEach { (title, detail) ->
+                Surface(color = Color(0xFFF3F0E8), shape = MaterialTheme.shapes.medium) {
+                    Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                        Text(title)
+                        Text(detail, style = MaterialTheme.typography.bodySmall)
+                    }
                 }
             }
         }
