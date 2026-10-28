@@ -1,5 +1,9 @@
 package dev.better.sheet.sample
 
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -12,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import dev.better.sheet.*
+import kotlinx.coroutines.launch
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
 import android.os.Build
@@ -52,17 +57,37 @@ class SheetUiTest {
         assertTrue("The visible sheet must grow, not only its content", compose.onNodeWithTag("sheet-header").getUnclippedBoundsInRoot().top < initialTop)
         compose.onNodeWithTag("footer").assertIsDisplayed()
     }
-    @Test fun lockedFlowIgnoresBackAndDownwardDrag() {
-        open("Locked")
+    @Test fun explicitCloseIsRequiredWhenDismissalIsDisabled() {
+        compose.runOnUiThread {
+            compose.activity.setContent {
+                MaterialTheme {
+                    val state = rememberSheetState(initialSnapPoint = "peek")
+                    val scope = rememberCoroutineScope()
+                    BetterModalSheet(
+                        state = state,
+                        snapPoints = listOf(SheetSnapPoint.fixed("peek", 420.dp), SheetSnapPoint.expanded()),
+                        behavior = SheetBehavior(dismissOnDrag = false, dismissOnScrim = false, dismissOnBack = false),
+                        title = "Pay",
+                        header = { Text("Pay", Modifier.padding(24.dp).testTag("sheet-title")) },
+                        footer = {
+                            Button(
+                                onClick = { scope.launch { state.hide() } },
+                                modifier = Modifier.fillMaxWidth().padding(16.dp).testTag("primary-action"),
+                            ) { Text("Pay") }
+                        },
+                    ) { Text("Card on file", Modifier.padding(24.dp).testTag("footer")) }
+                }
+            }
+        }
+        compose.waitUntil(10000) { compose.onAllNodesWithTag("footer").fetchSemanticsNodes().isNotEmpty() }
         UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).pressBack()
         compose.onNodeWithTag("footer").assertIsDisplayed()
-        compose.onNodeWithTag("snap-point-peek").performClick()
         compose.onNodeWithTag("sheet-title").performTouchInput { swipeDown() }
         compose.waitForIdle()
         compose.onNodeWithTag("footer").assertIsDisplayed()
         compose.onNodeWithTag("primary-action").performClick()
         compose.waitForIdle()
-        compose.onNodeWithTag("open-Locked").assertIsDisplayed()
+        compose.onNodeWithTag("footer").assertDoesNotExist()
     }
     @Test fun composerSendsMessagesAndRemainsVisibleWithIme() {
         open("Chat")

@@ -22,7 +22,7 @@ jobs:
       - run: chmod +x gradlew
       - name: Check device runner failure handling
         run: python3 -m unittest discover -s scripts/tests -v
-      - run: ./gradlew :better-sheet:testDebugUnitTest :better-sheet:lintRelease :sample:assembleDebug :sample:assembleDebugAndroidTest :findmy:assembleDebug :findmy:assembleDebugAndroidTest
+      - run: ./gradlew :better-sheet:testDebugUnitTest :better-sheet:lintRelease :sample:lintDebug :sample:assembleDebug :sample:assembleDebugAndroidTest :findmy:assembleDebug :findmy:assembleDebugAndroidTest
       - uses: actions/upload-artifact@v4
         if: always()
         with:
