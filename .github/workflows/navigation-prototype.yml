@@ -21,6 +21,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - name: Build comparison and run core checks
         run: ./gradlew --no-daemon --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process :sample:assembleDebug :sample:assembleDebugAndroidTest :sample:lintDebug :better-sheet:testDebugUnitTest :better-sheet:lintRelease
+      - name: Ensure ffmpeg
+        run: command -v ffmpeg || (sudo apt-get update && sudo apt-get install -y ffmpeg)
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -38,8 +40,9 @@ jobs:
             adb shell settings put global hide_error_dialogs 1
             adb shell settings put secure show_ime_with_hard_keyboard 1
             adb shell cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.threebutton
-            ./gradlew --no-daemon --max-workers=2 :sample:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.better.sheet.sample.NavigationComparisonTest,dev.better.sheet.sample.SheetUiTest
+            adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS
             python3 scripts/record-navigation.py --skip-build
+            ./gradlew --no-daemon --max-workers=2 -Dorg.gradle.jvmargs=-Xmx1g :sample:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.better.sheet.sample.NavigationComparisonTest,dev.better.sheet.sample.SheetUiTest
       - uses: actions/upload-artifact@v4
         if: always()
         with:
