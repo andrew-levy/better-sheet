@@ -112,7 +112,8 @@ numbered buttons open the same customer editor at the same 80% snap point:
 2. Existing `ModalCustomerSheetFragment`: custom `<sheet>` navigator + `BetterModalSheet`.
 3. `AdapterCustomerSheetFragment`: stock `<dialog>` navigator + `SheetDialogAdapter` + `BetterSheet`.
 
-The adapter additionally clears system-bar colors and contrast enforcement, inherits the host's
+The adapter uses a non-floating transparent dialog theme so its content receives full-window insets.
+It additionally clears system-bar colors and contrast enforcement, inherits the host's
 system-bar icon appearance, configures cutout and IME policy, and disables outer window animations.
 It keeps one DialogFragment window and the same Fragment-scoped ViewModel/result flow. No core API
 changes are required. Copying the original four window flags alone was not the proposed fix.

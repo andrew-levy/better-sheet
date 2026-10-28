@@ -9,6 +9,7 @@ import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.Window
 import android.view.WindowManager
 import androidx.core.view.WindowCompat
+import dev.better.sheet.sample.R
 
 /** Option 3: a stock <dialog> destination whose single window hosts BetterSheet.
  * Window policy mirrors BetterModalSheet; navigation and VM ownership stay with AndroidX.
@@ -16,7 +17,7 @@ import androidx.core.view.WindowCompat
 abstract class SheetDialogAdapter : ComposeContentFragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setStyle(STYLE_NO_TITLE, 0)
+        setStyle(STYLE_NO_TITLE, R.style.SheetDialogAdapterTheme)
     }
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog =
