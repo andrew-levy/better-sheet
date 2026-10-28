@@ -1,9 +1,5 @@
 package dev.better.sheet.sample.navigation
 
-import android.graphics.Color as AndroidColor
-import android.graphics.drawable.ColorDrawable
-import android.view.ViewGroup
-import android.view.WindowManager
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -12,9 +8,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.os.bundleOf
-import androidx.core.view.WindowCompat
-import androidx.fragment.app.viewModels
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.navigation.fragment.findNavController
@@ -29,18 +24,15 @@ class CustomerSheetViewModel(private val savedState: SavedStateHandle) : ViewMod
     fun close() { savedState["close"] = true }
 }
 
-/** Old path: <dialog> and the stock DialogFragmentNavigator own the modal window. */
-class LegacyCustomerSheetFragment : ComposeContentFragment() {
+/** Stock <dialog> destination; BetterSheet renders inside the Fragment's single window. */
+class CustomerSheetFragment : ComposeContentFragment() {
     private val viewModel: CustomerSheetViewModel by viewModels()
+
+    override fun getTheme(): Int = dev.better.sheet.R.style.BetterSheetDialogTheme
 
     override fun onStart() {
         super.onStart()
-        requireDialog().window?.apply {
-            setBackgroundDrawable(ColorDrawable(AndroidColor.TRANSPARENT))
-            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-            WindowCompat.setDecorFitsSystemWindows(this, false)
-        }
+        requireDialog().configureForBetterSheet(requireActivity().window)
     }
 
     @Composable override fun Content() {
@@ -50,30 +42,16 @@ class LegacyCustomerSheetFragment : ComposeContentFragment() {
         BetterSheet(
             state = state,
             snapPoints = customerSnapPoints,
-            title = "Legacy customer sheet",
+            title = "Customer note",
             onDismissed = { dismiss() },
         ) {
-            EditorContent("Opened in a dialog", viewModel, onSave = { saveResult(viewModel) },
-                onPop = { findNavController().popBackStack() },
-                onFullScreen = { findNavController().navigateSafe(R.id.openReceipt) })
-        }
-    }
-}
-
-class ModalCustomerSheetFragment : ModalSheetFragment() {
-    private val viewModel: CustomerSheetViewModel by viewModels()
-
-    @Composable override fun Content() {
-        val closeRequested by viewModel.closeRequested.collectAsState()
-        val state = rememberSheetState(initialSnapPoint = "medium")
-        ModalContent(state, customerSnapPoints, closeRequested, title = "Modal customer sheet") {
             val depth = requireArguments().getInt("depth", 1)
             EditorContent("From this account", viewModel, onSave = { saveResult(viewModel) },
                 onPop = { findNavController().popBackStack() },
                 onFullScreen = { findNavController().navigateSafe(R.id.openReceipt) },
                 followUp = if (depth < 2) {
                     {
-                        findNavController().navigateSafe(R.id.openModalSheet,
+                        findNavController().navigateSafe(R.id.openCustomerSheet,
                             bundleOf("customer" to "Second sheet", "depth" to depth + 1))
                     }
                 } else null)

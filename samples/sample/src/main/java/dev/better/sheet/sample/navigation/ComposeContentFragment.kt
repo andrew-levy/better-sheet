@@ -13,7 +13,7 @@ import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.DialogFragment
 import dev.better.sheet.sample.R
 
-/** Both examples preserve the enterprise-style Fragment VM and Content() override. */
+/** Compose content with the existing DialogFragment lifecycle and ViewModel ownership. */
 abstract class ComposeContentFragment : DialogFragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         ComposeView(requireContext()).apply {

@@ -5,13 +5,14 @@ import android.graphics.Color
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.fragment.app.FragmentActivity
+import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.NavController
 import androidx.navigation.NavOptions
 import dev.better.sheet.sample.R
 
-class NavigationComparisonActivity : FragmentActivity() {
-    val host: SheetNavHostFragment
-        get() = supportFragmentManager.findFragmentByTag("comparison-host") as SheetNavHostFragment
+class FragmentNavigationActivity : FragmentActivity() {
+    val host: NavHostFragment
+        get() = supportFragmentManager.findFragmentByTag("navigation-host") as NavHostFragment
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -19,7 +20,7 @@ class NavigationComparisonActivity : FragmentActivity() {
             statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
         )
-        setContentView(R.layout.navigation_comparison)
+        setContentView(R.layout.fragment_navigation)
     }
 }
 

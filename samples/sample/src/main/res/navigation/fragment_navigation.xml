@@ -1,0 +1,19 @@
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/fragment_navigation"
+    app:startDestination="@id/navigationHome">
+    <fragment android:id="@+id/navigationHome" android:name="dev.better.sheet.sample.navigation.HomeFragment">
+        <action android:id="@+id/openCustomers" app:destination="@id/navigationCustomers" />
+    </fragment>
+    <fragment android:id="@+id/navigationCustomers" android:name="dev.better.sheet.sample.navigation.CustomersFragment">
+        <action android:id="@+id/openCustomer" app:destination="@id/customerDetails" />
+    </fragment>
+    <fragment android:id="@+id/customerDetails" android:name="dev.better.sheet.sample.navigation.CustomerFragment" />
+    <fragment android:id="@+id/navigationReceipt" android:name="dev.better.sheet.sample.navigation.ReceiptFragment" />
+    <dialog android:id="@+id/customerSheet" android:name="dev.better.sheet.sample.navigation.CustomerSheetFragment">
+        <argument android:name="customer" app:argType="string" android:defaultValue="Alex Rivera" />
+        <argument android:name="depth" app:argType="integer" android:defaultValue="1" />
+    </dialog>
+    <action android:id="@+id/openCustomerSheet" app:destination="@id/customerSheet" />
+    <action android:id="@+id/openReceipt" app:destination="@id/navigationReceipt" />
+</navigation>

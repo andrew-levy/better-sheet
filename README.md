@@ -181,8 +181,9 @@ Open in Android Studio with JDK 17 and SDK 35, then run either app on Android 24
 
 [Contributing & recording demos](CONTRIBUTING.md) · [Architecture](docs/ARCHITECTURE.md) · [Apache 2.0 license](LICENSE)
 
-### Fragment Navigation comparison
+### Fragment Navigation
 
-The sample gallery includes **Fragment navigation comparison**: normal Fragment screens with the same
-VM-backed editor hosted by either a legacy DialogFragment or a dialog-less Fragment with BetterModalSheet.
-Both use `NavController.navigateSafe(...)`. See the [integration walkthrough](docs/FRAGMENT_NAVIGATION.md).
+Keep a standard `<dialog>` destination and render `BetterSheet` in your DialogFragment's ComposeView.
+Use `BetterSheetDialogTheme`, then call `requireDialog().configureForBetterSheet(requireActivity().window)`
+after `super.onStart()` to configure edge-to-edge presentation. No custom navigator or base class is required.
+Open **Fragment navigation** in the sample gallery, or see the [integration walkthrough](docs/FRAGMENT_NAVIGATION.md).

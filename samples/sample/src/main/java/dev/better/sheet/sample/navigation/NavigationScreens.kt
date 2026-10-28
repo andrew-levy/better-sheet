@@ -25,14 +25,14 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import dev.better.sheet.sample.R
 
-abstract class ComparisonScreenFragment : Fragment() {
+abstract class NavigationScreenFragment : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         ComposeView(requireContext()).apply {
             id = R.id.navigation_screen_compose
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 MaterialTheme(colorScheme = lightColorScheme(primary = Accent, background = Paper, surface = Color.White, onSurface = Ink)) {
-                    this@ComparisonScreenFragment.Content()
+                    this@NavigationScreenFragment.Content()
                 }
             }
         }
@@ -78,7 +78,7 @@ private fun AccountRow(title: String, subtitle: String, tag: String, onClick: ()
     }
 }
 
-class ComparisonHomeFragment : ComparisonScreenFragment() {
+class HomeFragment : NavigationScreenFragment() {
     @Composable override fun Content() {
         Screen("ACCOUNTS", "People you\nwork with.", "Open an account, leave a note, and come back to this screen.") {
             AccountRow("Alex Rivera", "Enterprise · New York", "customers") {
@@ -88,7 +88,7 @@ class ComparisonHomeFragment : ComparisonScreenFragment() {
     }
 }
 
-class ComparisonCustomersFragment : ComparisonScreenFragment() {
+class CustomersFragment : NavigationScreenFragment() {
     @Composable override fun Content() {
         Screen("CUSTOMERS", "Accounts", "One account in this sample.") {
             AccountRow("Alex Rivera", "Enterprise account · New York", "customer") {
@@ -99,11 +99,11 @@ class ComparisonCustomersFragment : ComparisonScreenFragment() {
     }
 }
 
-class ComparisonCustomerFragment : ComparisonScreenFragment() {
+class CustomerFragment : NavigationScreenFragment() {
     @Composable override fun Content() {
         val nav = findNavController()
         // On recreation a sheet may be current; subscribe to this screen's entry explicitly.
-        val entry = remember(nav) { nav.getBackStackEntry(R.id.comparisonCustomer) }
+        val entry = remember(nav) { nav.getBackStackEntry(R.id.customerDetails) }
         val result by entry.savedStateHandle.getStateFlow("customer-result", "No changes yet").collectAsState()
         var calls by rememberSaveable { mutableIntStateOf(0) }
         Screen("ACCOUNT", "Alex Rivera", "Enterprise · New York") {
@@ -120,16 +120,14 @@ class ComparisonCustomerFragment : ComparisonScreenFragment() {
             OutlinedButton(onClick = { calls++ }, modifier = Modifier.testTag("background-counter")) {
                 Text("Log a call · $calls")
             }
-            Button(onClick = { nav.navigateSafe(R.id.openModalSheet) },
-                modifier = Modifier.fillMaxWidth().testTag("open-modal")) { Text("Add a note") }
-            TextButton(onClick = { nav.navigateSafe(R.id.openLegacySheet) },
-                modifier = Modifier.testTag("open-legacy")) { Text("Open the same note in a dialog") }
+            Button(onClick = { nav.navigateSafe(R.id.openCustomerSheet) },
+                modifier = Modifier.fillMaxWidth().testTag("open-sheet")) { Text("Add a note") }
             TextButton(onClick = { nav.popBackStack() }) { Text("Back to accounts") }
         }
     }
 }
 
-class ComparisonReceiptFragment : ComparisonScreenFragment() {
+class ReceiptFragment : NavigationScreenFragment() {
     @Composable override fun Content() {
         Screen("RECEIPT", "Note saved", "The sheet closed on the way here. Back returns to the account.") {
             Button(onClick = { findNavController().popBackStack() }, modifier = Modifier.testTag("receipt-back")) {

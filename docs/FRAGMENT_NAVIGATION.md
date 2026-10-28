@@ -1,103 +1,100 @@
-# Fragment Navigation comparison
+# Fragment Navigation with BetterSheet
 
-Run the sample gallery and select **Fragment navigation comparison**, then browse Customers →
-View customer. Both buttons open the same VM-backed customer editor over the details screen.
-Both use the same `NavController.navigateSafe(...)` helper and the same `Content()` override pattern.
-The screen counter and returned note make preservation of the underlying screen easy to check.
+Use a standard `DialogFragment`, `ComposeView`, and XML `<dialog>` destination. The sample gallery's
+**Fragment navigation** entry opens Customers → account → Add a note. The editor retains its
+Fragment-scoped ViewModel, Bundle arguments, and SavedStateHandle results.
 
-| | Old: DialogFragment | New: modal sheet destination |
-|---|---|---|
-| Graph tag | `<dialog>` | `<sheet>` |
-| Navigator | AndroidX `DialogFragmentNavigator` | Sample `SheetFragmentNavigator` |
-| Fragment dialog | Full-screen transparent dialog | Disabled with `setShowsDialog(false)` |
-| Sheet composable | `BetterSheet` | `BetterModalSheet` |
-| Window owner | DialogFragment | BetterModalSheet's Compose Dialog |
-| VM owner | Fragment | Fragment |
-| Presentation call | `navigateSafe(actionId)` | `navigateSafe(actionId)` |
+## Integration
 
-This is an application integration example, not a new public library API. The legacy version is a
-valid hosting arrangement; the new version lets the library manage its own modal window and system
-bar configuration. Neither version should have two dialogs for one presented sheet.
+Keep your existing Fragment base class and navigation helper. Apply the supplied theme before
+window creation and call the public dialog helper after `super.onStart()`:
 
-## Integration steps
+```kotlin
+class CustomerSheetFragment : YourComposeDialogFragment() {
+    private val viewModel: CustomerSheetViewModel by viewModels()
 
-1. Add `navigation-fragment-ktx` to the app. The example pins Navigation **2.8.9**, alongside the
-   sample's Fragment **1.8.8**. Keep these versions aligned with your application's dependency policy.
-2. Copy the sample's `SheetNavHostFragment` and `SheetFragmentNavigator` into your app's navigation
-   layer. Use the custom NavHost in your layout. It preserves the standard FragmentNavigator container
-   and adds a transparent sibling container with a stable resource ID for sheet Fragment views.
-3. Register the navigator in `onCreateNavHostController`, before graph inflation and restoration.
-   `app:navGraph` in `navigation_comparison.xml` also ensures the graph is assigned during recreation.
-4. Create a host base class following `ComposeContentFragment` / `ModalSheetFragment` and subclass it as in
-   `ModalCustomerSheetFragment`: retain your
-   VM factory, `by viewModels()`, and `Content()` override. Disable the Fragment dialog in `onCreate`.
-   Give the ComposeView a stable ID and use `DisposeOnViewTreeLifecycleDestroyed`.
-5. Change participating graph destinations from `<dialog>` to `<sheet>`, retaining IDs, arguments,
-   actions, and deep links. Existing regular Fragment and dialog destinations keep their navigators.
-6. Keep your own `navigateSafe` helper. The sample's helper only demonstrates a RESUMED-entry guard;
-   it deliberately does not catch and hide graph or argument errors. If your helper inspects dialog
-   destination types, update that check to recognize the new `FloatingWindow` destination.
-7. Render `BetterModalSheet` in `Content()`. Keep it mounted while hiding. Wire `onDismissed` to the
-   navigator's entry-specific completion callback. A VM or button can request `SheetState.hide()`.
-8. Keep logical stack mutations in Navigation. Never directly `dismiss()` a `<sheet>` Fragment or
-   add a second Fragment back-stack entry for it. Use `popBackStack()` for navigation-driven closure.
-9. Return results through `previousBackStackEntry.savedStateHandle` before closing, as in `saveResult()`.
-   With stacked sheets, the previous entry is the previous sheet, not necessarily the underlying screen.
+    override fun getTheme(): Int = dev.better.sheet.R.style.BetterSheetDialogTheme
 
-The new host remains a DialogFragment subclass to demonstrate migration of an existing base class.
-It is added to an actual container as a regular Fragment, rather than presented with `.show()`.
-Do not disable the dialog of a Fragment still managed by the stock `<dialog>` navigator: that
-navigator observes `requireDialog()` and expects a real dialog.
+    override fun onStart() {
+        super.onStart()
+        requireDialog().configureForBetterSheet(requireActivity().window)
+    }
 
-## Stack and dismissal ownership
+    @Composable
+    override fun Content() {
+        val state = rememberSheetState(initialSnapPoint = "medium")
+        val close by viewModel.closeRequested.collectAsState()
+        LaunchedEffect(close) { if (close) state.hide() }
+        BetterSheet(
+            state = state,
+            snapPoints = listOf(
+                SheetSnapPoint.fraction("medium", .8f),
+                SheetSnapPoint.expanded(),
+            ),
+            onDismissed = { dismiss() },
+        ) {
+            CustomerEditor(viewModel)
+        }
+    }
+}
+```
 
-Each Fragment's tag is its **NavBackStackEntry ID**, not the destination ID. Two instances of the same
-sheet destination therefore have independent arguments and VMs. Instantiation uses `FragmentFactory`.
+Import `dev.better.sheet.configureForBetterSheet`. Render the sheet as the full-size ComposeView
+root, with `ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed` and a stable view ID.
+The sample's `ComposeContentFragment` illustrates that setup; the helper does not require using it.
 
-For user dismissal, the modal animates out first. `onSheetHidden` then pops the matching navigator
-entry (and any sheet entries above it, following the stock dialog navigator's policy).
+```xml
+<dialog
+    android:id="@+id/customerSheet"
+    android:name="your.package.CustomerSheetFragment">
+    <argument android:name="customer" app:argType="string" />
+</dialog>
+```
 
-For a programmatic single-entry pop, `popWithTransition` updates Navigation immediately while the
-outgoing Fragment stays composed for the exit. Completion removes that Fragment. Fragment destruction
-marks the outgoing entry's transition complete, allowing Navigation to release its state. A transaction
-completion callback also handles optimized-away hosts that never reached a Fragment lifecycle. A repeated
-`onDismissed` callback cannot pop the underlying screen because the outgoing entry is already absent.
+Keep your normal AndroidX `NavHostFragment`, graph IDs, arguments, Safe Args setup, and
+`navigateSafe(...)` calls. The sample pins Navigation 2.8.9 and Fragment 1.8.8, uses Bundle arguments,
+and includes an illustrative RESUMED-entry guard. Safe Args and process-death restoration need
+validation in the consuming app.
 
-Multi-entry pops remove their hosts immediately. A navigate-and-pop issued before a Fragment attaches
-also removes the pending host without waiting for a composition or animation that never started.
-Navigating to a regular full-screen destination uses Navigation's usual floating-window removal.
+## Window policy
 
-The navigator reconnects restored Fragments by their entry tags. The modal host saves its pending
-close flag and reconciles a sheet state restored already hidden. Dismissal while FragmentManager has
-saved its state is retried when the host resumes. Fragment view composition and VM ownership remain
-with the Fragment; navigation-entry lifecycle changes alone do not pause every underlying Fragment.
+`BetterSheetDialogTheme` is a transparent, non-floating, no-title theme. An app may instead use its
+own theme with equivalent attributes. **`android:windowIsFloating=false` must be set before the
+Dialog window is constructed**; an `onStart()` helper cannot change this policy retroactively.
+The helper rejects a floating window with an actionable message rather than silently leaving
+system bars outside the sheet's drawable area.
 
-## Scope and limitations
+`configureForBetterSheet(hostWindow)` makes the window fill its parent, disables the platform dim
+and outer window animation, clears system-bar colors and contrast overlays, configures cutouts,
+and copies the host's system-bar icon appearance. It matches Compose Dialog's IME policy: resize
+on API 30 and earlier, adjust-nothing on API 31+. BetterSheet consumes the resulting insets.
+The Compose sheet draws the scrim and sheet surface across the system-bar areas.
 
-- This sample supports a normal Navigation 2 Fragment stack, arguments, repeated sheet destinations,
-  user/VM dismissal, single-entry animated pops, multi-entry pops, configuration recreation, and
-  SavedStateHandle results. It does not require migrating the app to Navigation Compose or Navigation 3.
-- It explicitly rejects sheet `saveState` / `restoreState` options for multiple saved back stacks.
-  Supporting those requires saving/restoring the associated Fragment state as well; do not remove the
-  checks and claim support. Ordinary Activity/Fragment recreation uses a different restoration path.
-- The sample uses Bundle arguments. Safe Args generation and typed-route integration are not exercised.
-- `launchSingleTop` reuses the existing host and VM; editor inputs are initialized when the VM is created.
-  Use a new entry when you need a new editor, rather than expecting singleTop to reset the VM.
-- Multiple new sheets stack separate dialogs. Window ownership is one dialog **per presented sheet**.
-  The sample does not coordinate cross-sheet background scaling via `SheetStackState`.
-- Runtime behavior must be revalidated when adapting this navigator to another AndroidX version.
-  Process-death restoration should be checked on the target app/device in addition to Activity recreation.
+Use `BetterSheet` here: the DialogFragment already owns the modal window. `BetterModalSheet`
+remains available for Compose callers that want the library to create their dialog.
+
+## Dismissal and results
+
+For animated user/VM closure, call `state.hide()` and let `onDismissed` call `dismiss()`. Save results
+through `previousBackStackEntry.savedStateHandle` before requesting closure. For a stacked dialog,
+the previous entry is the preceding dialog. AndroidX owns stack removal, VM cleanup, recreation,
+and transitions to regular full-screen destinations.
+
+A direct `popBackStack()` or `popUpTo` retains standard dialog dismissal; it does not wait for a
+Compose exit animation. The sample demonstrates both kinds of closure. Use sheet-state closure
+when the exit animation matters. This integration does not add predictive Back progress or
+coordinate a shared scrim/background transform across stacked dialogs.
 
 ## Validation
 
-`NavigationComparisonTest` covers both hosting paths, results, physical Back, scrim and drag dismissal,
-programmatic pops, composition disposal and VM cleanup, stacked sheets, full-screen navigation,
-Activity recreation with draft/VM preservation, immediate navigate-and-pop, and multi-entry popUpTo.
-On API 29+, it also counts global window views to assert that opening either version adds one window.
+`FragmentNavigationTest` covers results and screen preservation, one full-window dialog with
+transparent system bars, theme misuse, physical Back, scrim/drag/VM closure, navigation pops,
+composition and VM disposal, stacked dialogs, full-screen navigation, Activity recreation,
+immediate navigate-and-pop, and multi-entry removal. It is included in the API 24/35 device runner.
 
 ```bash
 ./gradlew :sample:assembleDebug :sample:assembleDebugAndroidTest \
-  :better-sheet:testDebugUnitTest :better-sheet:lintRelease
+  :sample:lintDebug :better-sheet:testDebugUnitTest :better-sheet:lintRelease
 ./gradlew :sample:connectedDebugAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.class=dev.better.sheet.sample.NavigationComparisonTest
+  -Pandroid.testInstrumentationRunnerArguments.class=dev.better.sheet.sample.FragmentNavigationTest
 ```

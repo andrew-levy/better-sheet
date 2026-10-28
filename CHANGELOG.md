@@ -6,6 +6,13 @@ public API.
 
 ## [Unreleased]
 
+### Added
+
+- `Dialog.configureForBetterSheet(hostWindow)` and `BetterSheetDialogTheme` for hosting
+  `BetterSheet` in an existing DialogFragment with standard XML Fragment Navigation.
+- A Fragment Navigation sample with Fragment-scoped ViewModels, saved-state results,
+  stacked dialogs, and edge-to-edge system-bar configuration.
+
 ## [0.6.2] - 2026-10-20
 
 ### Fixed

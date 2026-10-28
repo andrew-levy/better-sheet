@@ -126,6 +126,13 @@ See the runnable [Fragment sample](../samples/sample/src/main/java/dev/better/sh
 `BetterSheetHost` remains a lower-level public rendering API. Prefer `BetterSheet` for inline
 usage with managed entry/exit and `onDismissed`.
 
+For a reusable Fragment Navigation destination, use a stock `<dialog>` destination with `BetterSheet`
+in a DialogFragment. Set `getTheme()` to `dev.better.sheet.R.style.BetterSheetDialogTheme`, then call
+`requireDialog().configureForBetterSheet(requireActivity().window)` after `super.onStart()`.
+The theme supplies non-floating window policy at creation; the helper configures full-screen sizing,
+transparent system bars, contrast, cutout/IME policy, and system-bar icon appearance. Your own Fragment
+base class and ViewModels stay in place. See [Fragment Navigation](FRAGMENT_NAVIGATION.md) for the full example.
+
 ## Stacking
 
 Share one `rememberSheetStackState()` between ordinary modal sheets. There is no stack

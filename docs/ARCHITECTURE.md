@@ -99,3 +99,14 @@ Corner metadata is refreshed after platform inset dispatch, including dialog dec
 The host's actual bounds determine eligibility, rather than requiring the Compose view and
 decor view to have identical dimensions. Metadata matching affects collapsed circular radii;
 expanded top corners remain explicitly configured. It is not an exact physical screen mask.
+
+
+## DialogFragment hosting
+
+`Dialog.configureForBetterSheet(hostWindow)` configures an existing Dialog window to host
+`BetterSheet` and its Compose-drawn scrim. `BetterSheetDialogTheme` supplies a non-floating,
+transparent window before creation; the helper runs in `onStart()` and configures sizing,
+system bars, icon appearance, cutouts, and IME policy. It adds no Fragment or Navigation dependency.
+The Fragment owns its ComposeView and ViewModel; AndroidX's stock DialogFragmentNavigator owns
+the `<dialog>` back stack. Sheet-driven hiding finishes before `onDismissed` calls `dismiss()`.
+Direct Navigation pops use standard dialog dismissal and do not wait for a sheet exit animation.
