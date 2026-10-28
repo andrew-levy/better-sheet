@@ -98,7 +98,8 @@ class FragmentNavigationTest {
 
     @Test fun helperRejectsFloatingThemeWithActionableMessage() {
         compose.runOnUiThread {
-            val dialog = Dialog(compose.activity)
+            val dialog = Dialog(compose.activity, android.R.style.Theme_Material_Light_Dialog_NoActionBar)
+            assertTrue(requireNotNull(dialog.window).isFloating)
             try {
                 dialog.configureForBetterSheet(compose.activity.window)
                 fail("A floating theme must be configured before window creation")
