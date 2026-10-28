@@ -13,6 +13,10 @@
     <dialog android:id="@+id/legacyCustomerSheet" android:name="dev.better.sheet.sample.navigation.LegacyCustomerSheetFragment">
         <argument android:name="customer" app:argType="string" android:defaultValue="Alex Rivera" />
     </dialog>
+    <dialog android:id="@+id/adapterCustomerSheet" android:name="dev.better.sheet.sample.navigation.AdapterCustomerSheetFragment">
+        <argument android:name="customer" app:argType="string" android:defaultValue="Alex Rivera" />
+    </dialog>
+    <action android:id="@+id/openAdapterSheet" app:destination="@id/adapterCustomerSheet" />
     <sheet android:id="@+id/modalCustomerSheet" android:name="dev.better.sheet.sample.navigation.ModalCustomerSheetFragment">
         <argument android:name="customer" app:argType="string" android:defaultValue="Alex Rivera" />
         <argument android:name="depth" app:argType="integer" android:defaultValue="1" />

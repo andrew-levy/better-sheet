@@ -121,9 +121,11 @@ class ComparisonCustomerFragment : ComparisonScreenFragment() {
                 Text("Log a call · $calls")
             }
             Button(onClick = { nav.navigateSafe(R.id.openModalSheet) },
-                modifier = Modifier.fillMaxWidth().testTag("open-modal")) { Text("Add a note") }
+                modifier = Modifier.fillMaxWidth().testTag("open-modal")) { Text("2 · Custom sheet navigator") }
             TextButton(onClick = { nav.navigateSafe(R.id.openLegacySheet) },
-                modifier = Modifier.testTag("open-legacy")) { Text("Open the same note in a dialog") }
+                modifier = Modifier.testTag("open-legacy")) { Text("1 · Existing DialogFragment") }
+            OutlinedButton(onClick = { nav.navigateSafe(R.id.openAdapterSheet) },
+                modifier = Modifier.fillMaxWidth().testTag("open-adapter")) { Text("3 · Dialog window adapter") }
             TextButton(onClick = { nav.popBackStack() }) { Text("Back to accounts") }
         }
     }

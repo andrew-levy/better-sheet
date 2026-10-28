@@ -101,3 +101,32 @@ On API 29+, it also counts global window views to assert that opening either ver
 ./gradlew :sample:connectedDebugAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.class=dev.better.sheet.sample.NavigationComparisonTest
 ```
+
+
+## Focused option 3 prototype
+
+Open **Navigation comparison** in the sample gallery, then Customers → account. The three
+numbered buttons open the same customer editor at the same 80% snap point:
+
+1. Existing `LegacyCustomerSheetFragment`: unchanged window setup.
+2. Existing `ModalCustomerSheetFragment`: custom `<sheet>` navigator + `BetterModalSheet`.
+3. `AdapterCustomerSheetFragment`: stock `<dialog>` navigator + `SheetDialogAdapter` + `BetterSheet`.
+
+The adapter additionally clears system-bar colors and contrast enforcement, inherits the host's
+system-bar icon appearance, configures cutout and IME policy, and disables outer window animations.
+It keeps one DialogFragment window and the same Fragment-scoped ViewModel/result flow. No core API
+changes are required. Copying the original four window flags alone was not the proposed fix.
+
+Run `python3 scripts/record-navigation.py` with an API 35 emulator and ffmpeg available. The
+prototype workflow runs NavigationComparisonTest (including adapter results, single-window
+ownership, recreation, and full-screen navigation), SheetUiTest, and records all three scenarios.
+Videos are artifacts of **Navigation prototype recordings**, under `docs/videos/navigation/`.
+`comparison.mp4` labels synchronized opening/closing clips side by side; separate native-resolution
+clips preserve all device pixels, including the system bars. These are real Android screenshots
+at 32 ms steps of Compose animation time. Window-manager animation timing is not controlled by
+that clock, so the legacy outer-window animation is illustrative rather than a timing benchmark.
+
+This prototype tests presentation and basic stock-navigator integration. It does not add animated
+interception of arbitrary `popBackStack()` calls to option 3; those remain stock dialog navigation.
+Validate system-bar appearance, IME and dismissal on the production app's supported devices before
+replacing the custom navigator. The clip alone does not establish API 24 or OEM compatibility.

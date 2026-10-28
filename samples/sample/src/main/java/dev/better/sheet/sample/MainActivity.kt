@@ -133,6 +133,11 @@ private fun Gallery(autoOpen: Demo?) {
             item { StoryRow(Demo.Heavy, Ink) { open(Demo.Heavy) } }
             item { SectionLabel("Fragments") }
             item {
+                StoryRow("Navigation comparison", "Compare all three Fragment sheet hosts.", "open-navigation", Clay) {
+                    context.startActivity(Intent(context, dev.better.sheet.sample.navigation.NavigationComparisonActivity::class.java))
+                }
+            }
+            item {
                 StoryRow("June's", "A saved place, hosted by a Fragment.", "open-saved", Clay) {
                     context.startActivity(Intent(context, FragmentDemoActivity::class.java))
                 }

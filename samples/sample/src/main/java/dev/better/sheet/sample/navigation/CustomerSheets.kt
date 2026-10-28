@@ -60,6 +60,27 @@ class LegacyCustomerSheetFragment : ComposeContentFragment() {
     }
 }
 
+/** Option 3 keeps the stock dialog navigator and the same VM-backed editor. */
+class AdapterCustomerSheetFragment : SheetDialogAdapter() {
+    private val viewModel: CustomerSheetViewModel by viewModels()
+
+    @Composable override fun Content() {
+        val state = rememberSheetState(initialSnapPoint = "medium")
+        val close by viewModel.closeRequested.collectAsState()
+        LaunchedEffect(close) { if (close) state.hide() }
+        BetterSheet(
+            state = state,
+            snapPoints = customerSnapPoints,
+            title = "Adapter customer sheet",
+            onDismissed = { dismiss() },
+        ) {
+            EditorContent("Opened in a dialog", viewModel, onSave = { saveResult(viewModel) },
+                onPop = { findNavController().popBackStack() },
+                onFullScreen = { findNavController().navigateSafe(R.id.openReceipt) })
+        }
+    }
+}
+
 class ModalCustomerSheetFragment : ModalSheetFragment() {
     private val viewModel: CustomerSheetViewModel by viewModels()
 

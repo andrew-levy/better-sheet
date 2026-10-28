@@ -29,8 +29,8 @@ class NavigationComparisonTest {
         compose.onNodeWithTag("background-counter").performClick()
     }
 
-    private fun open(modern: Boolean = true) {
-        compose.onNodeWithTag(if (modern) "open-modal" else "open-legacy").performClick()
+    private fun open(modern: Boolean = true, adapter: Boolean = false) {
+        compose.onNodeWithTag(if (adapter) "open-adapter" else if (modern) "open-modal" else "open-legacy").performClick()
         compose.waitUntil(10000) { compose.onAllNodesWithTag("sheet-title").fetchSemanticsNodes().isNotEmpty() }
         compose.waitForIdle()
     }
@@ -52,8 +52,9 @@ class NavigationComparisonTest {
 
     @Test fun legacyAndModalReturnResultsAndLeaveUnderlyingScreenInteractive() {
         details()
-        for (modern in listOf(false, true)) {
-            open(modern)
+        for (approach in 1..3) {
+            val modern = approach == 2
+            open(modern, adapter = approach == 3)
             compose.onNodeWithTag("sheet-customer").assertTextEquals("Alex Rivera")
             compose.onNodeWithTag("sheet-note").performTextInput(if (modern) "Modal note" else "Legacy note")
             compose.onNodeWithTag("save-sheet").performClick()
@@ -69,8 +70,9 @@ class NavigationComparisonTest {
         details()
         var baseline = 0
         if (Build.VERSION.SDK_INT >= 29) compose.runOnUiThread { baseline = WindowInspector.getGlobalWindowViews().size }
-        for (modern in listOf(false, true)) {
-            open(modern)
+        for (approach in 1..3) {
+            val modern = approach == 2
+            open(modern, adapter = approach == 3)
             compose.runOnUiThread {
                 val fragment = activeSheet() as DialogFragment
                 assertEquals(!modern, fragment.showsDialog)
@@ -147,8 +149,9 @@ class NavigationComparisonTest {
 
     @Test fun normalNavigationRemovesFloatingDestination() {
         details()
-        for (modern in listOf(false, true)) {
-            open(modern)
+        for (approach in 1..3) {
+            val modern = approach == 2
+            open(modern, adapter = approach == 3)
             compose.onNodeWithTag("sheet-full-screen").performScrollTo().performClick()
             awaitDestination(R.id.comparisonReceipt)
             compose.onNodeWithTag("receipt-back").performClick()
@@ -158,8 +161,9 @@ class NavigationComparisonTest {
 
     @Test fun rotationRestoresOneSheetWithItsDraftAndVm() {
         details()
-        for (modern in listOf(false, true)) {
-            open(modern)
+        for (approach in 1..3) {
+            val modern = approach == 2
+            open(modern, adapter = approach == 3)
             compose.onNodeWithTag("sheet-note").performTextInput("Keep this draft")
             lateinit var originalVm: CustomerSheetViewModel
             compose.runOnUiThread { originalVm = ViewModelProvider(activeSheet())[CustomerSheetViewModel::class.java] }
